@@ -7,11 +7,12 @@
 import argparse
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import traceback
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Union, List
 from flask import Flask, request, jsonify
 
 # Configure logging
@@ -41,6 +42,55 @@ COMMAND_ALLOWLIST = {
 }
 
 app = Flask(__name__)
+
+
+def validate_target(target: str) -> bool:
+    """
+    Validate target parameter (IP, domain, or URL)
+
+    Args:
+        target: The target string to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not target or len(target) > 500:
+        return False
+
+    # Block command injection attempts
+    dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '{', '}', '<', '>', '\n', '\r']
+    if any(char in target for char in dangerous_chars):
+        logger.warning(f"Dangerous characters detected in target: {target}")
+        return False
+
+    return True
+
+
+def validate_file_path(file_path: str) -> bool:
+    """
+    Validate file path parameter
+
+    Args:
+        file_path: The file path to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not file_path or len(file_path) > 500:
+        return False
+
+    # Block path traversal attempts
+    if '..' in file_path:
+        logger.warning(f"Path traversal attempt detected: {file_path}")
+        return False
+
+    # Block command injection
+    dangerous_chars = [';', '&', '|', '`', '$', '\n', '\r']
+    if any(char in file_path for char in dangerous_chars):
+        logger.warning(f"Dangerous characters detected in file path: {file_path}")
+        return False
+
+    return True
 
 
 class CommandExecutor:
@@ -137,16 +187,44 @@ class CommandExecutor:
             }
 
 
-def execute_command(command: list) -> Dict[str, Any]:
+def execute_command(command: Union[str, List[str]]) -> Dict[str, Any]:
     """
     Execute a command and return the result
-    
+
     Args:
-        command: The command to execute, as a list of strings
-        
+        command: The command to execute, either as a string or a list of strings
+                If a string is provided, it will be safely parsed using shlex.split()
+
     Returns:
         A dictionary containing the stdout, stderr, and return code
     """
+    # Convert string commands to lists using shlex for proper shell-like parsing
+    if isinstance(command, str):
+        try:
+            command = shlex.split(command)
+        except ValueError as e:
+            logger.error(f"Error parsing command string: {e}")
+            return {
+                "stdout": "",
+                "stderr": f"Error parsing command: {str(e)}",
+                "return_code": -1,
+                "success": False,
+                "timed_out": False,
+                "partial_results": False
+            }
+
+    # Validate that command is not empty
+    if not command or len(command) == 0:
+        logger.error("Empty command provided")
+        return {
+            "stdout": "",
+            "stderr": "Empty command provided",
+            "return_code": -1,
+            "success": False,
+            "timed_out": False,
+            "partial_results": False
+        }
+
     executor = CommandExecutor(command)
     return executor.execute()
 
@@ -191,18 +269,32 @@ def nmap():
                 "error": "Target parameter is required"
             }), 400
 
-        command = f"nmap {scan_type}"
+        # Validate target
+        if not validate_target(target):
+            logger.warning(f"Invalid target parameter: {target}")
+            return jsonify({
+                "error": "Invalid target parameter"
+            }), 400
 
+        # Build command as list for security
+        command_parts = ["nmap"]
+
+        # Add scan type
+        if scan_type:
+            command_parts.extend(scan_type.split())
+
+        # Add ports
         if ports:
-            command += f" -p {ports}"
+            command_parts.extend(["-p", ports])
 
+        # Add additional args
         if additional_args:
-            # Basic validation for additional args - more sophisticated validation would be better
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        command += f" {target}"
+        # Add target
+        command_parts.append(target)
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in nmap endpoint: {str(e)}")
@@ -228,6 +320,13 @@ def gobuster():
                 "error": "URL parameter is required"
             }), 400
 
+        # Validate URL
+        if not validate_target(url):
+            logger.warning(f"Invalid URL parameter: {url}")
+            return jsonify({
+                "error": "Invalid URL parameter"
+            }), 400
+
         # Validate mode
         if mode not in ["dir", "dns", "fuzz", "vhost"]:
             logger.warning(f"Invalid gobuster mode: {mode}")
@@ -235,12 +334,20 @@ def gobuster():
                 "error": f"Invalid mode: {mode}. Must be one of: dir, dns, fuzz, vhost"
             }), 400
 
-        command = f"gobuster {mode} -u {url} -w {wordlist}"
+        # Validate wordlist path
+        if not validate_file_path(wordlist):
+            logger.warning(f"Invalid wordlist path: {wordlist}")
+            return jsonify({
+                "error": "Invalid wordlist path"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["gobuster", mode, "-u", url, "-w", wordlist]
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in gobuster endpoint: {str(e)}")
@@ -265,12 +372,27 @@ def dirb():
                 "error": "URL parameter is required"
             }), 400
 
-        command = f"dirb {url} {wordlist}"
+        # Validate URL
+        if not validate_target(url):
+            logger.warning(f"Invalid URL parameter: {url}")
+            return jsonify({
+                "error": "Invalid URL parameter"
+            }), 400
+
+        # Validate wordlist path
+        if not validate_file_path(wordlist):
+            logger.warning(f"Invalid wordlist path: {wordlist}")
+            return jsonify({
+                "error": "Invalid wordlist path"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["dirb", url, wordlist]
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in dirb endpoint: {str(e)}")
@@ -294,12 +416,20 @@ def nikto():
                 "error": "Target parameter is required"
             }), 400
 
-        command = f"nikto -h {target}"
+        # Validate target
+        if not validate_target(target):
+            logger.warning(f"Invalid target parameter: {target}")
+            return jsonify({
+                "error": "Invalid target parameter"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["nikto", "-h", target]
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in nikto endpoint: {str(e)}")
@@ -324,15 +454,23 @@ def sqlmap():
                 "error": "URL parameter is required"
             }), 400
 
-        command = f"sqlmap -u {url} --batch"
+        # Validate URL
+        if not validate_target(url):
+            logger.warning(f"Invalid URL parameter: {url}")
+            return jsonify({
+                "error": "Invalid URL parameter"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["sqlmap", "-u", url, "--batch"]
 
         if data:
-            command += f" --data=\"{data}\""
+            command_parts.extend(["--data", data])
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in sqlmap endpoint: {str(e)}")
@@ -356,14 +494,23 @@ def metasploit():
                 "error": "Module parameter is required"
             }), 400
 
-        # Format options for Metasploit
-        options_str = ""
-        for key, value in options.items():
-            options_str += f" {key}={value}"
+        # Validate module name (basic validation)
+        if not module or len(module) > 200 or any(char in module for char in [';', '&', '|', '`', '$', '\n', '\r']):
+            logger.warning(f"Invalid module parameter: {module}")
+            return jsonify({
+                "error": "Invalid module parameter"
+            }), 400
 
         # Create an MSF resource script
         resource_content = f"use {module}\n"
         for key, value in options.items():
+            # Basic validation of option keys and values
+            if not key or len(key) > 100 or any(char in str(key) for char in [';', '&', '|', '`', '$', '\n', '\r']):
+                logger.warning(f"Invalid option key: {key}")
+                continue
+            if len(str(value)) > 500:
+                logger.warning(f"Option value too long for key: {key}")
+                continue
             resource_content += f"set {key} {value}\n"
         resource_content += "exploit\n"
 
@@ -372,8 +519,9 @@ def metasploit():
         with open(resource_file, "w") as f:
             f.write(resource_content)
 
-        command = f"msfconsole -q -r {resource_file}"
-        result = execute_command(command)
+        # Build command as list for security
+        command_parts = ["msfconsole", "-q", "-r", resource_file]
+        result = execute_command(command_parts)
 
         # Clean up the temporary file
         try:
@@ -409,30 +557,51 @@ def hydra():
                 "error": "Target and service parameters are required"
             }), 400
 
+        # Validate target
+        if not validate_target(target):
+            logger.warning(f"Invalid target parameter: {target}")
+            return jsonify({
+                "error": "Invalid target parameter"
+            }), 400
+
         if not (username or username_file) or not (password or password_file):
             logger.warning("Hydra called without username/password parameters")
             return jsonify({
                 "error": "Username/username_file and password/password_file are required"
             }), 400
 
-        command = f"hydra -t 4"
+        # Validate file paths if provided
+        if username_file and not validate_file_path(username_file):
+            logger.warning(f"Invalid username file path: {username_file}")
+            return jsonify({
+                "error": "Invalid username file path"
+            }), 400
+
+        if password_file and not validate_file_path(password_file):
+            logger.warning(f"Invalid password file path: {password_file}")
+            return jsonify({
+                "error": "Invalid password file path"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["hydra", "-t", "4"]
 
         if username:
-            command += f" -l {username}"
+            command_parts.extend(["-l", username])
         elif username_file:
-            command += f" -L {username_file}"
+            command_parts.extend(["-L", username_file])
 
         if password:
-            command += f" -p {password}"
+            command_parts.extend(["-p", password])
         elif password_file:
-            command += f" -P {password_file}"
+            command_parts.extend(["-P", password_file])
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        command += f" {target} {service}"
+        command_parts.extend([target, service])
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in hydra endpoint: {str(e)}")
@@ -458,20 +627,34 @@ def john():
                 "error": "Hash file parameter is required"
             }), 400
 
-        command = f"john"
+        # Validate file paths
+        if not validate_file_path(hash_file):
+            logger.warning(f"Invalid hash file path: {hash_file}")
+            return jsonify({
+                "error": "Invalid hash file path"
+            }), 400
+
+        if wordlist and not validate_file_path(wordlist):
+            logger.warning(f"Invalid wordlist path: {wordlist}")
+            return jsonify({
+                "error": "Invalid wordlist path"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["john"]
 
         if format_type:
-            command += f" --format={format_type}"
+            command_parts.append(f"--format={format_type}")
 
         if wordlist:
-            command += f" --wordlist={wordlist}"
+            command_parts.append(f"--wordlist={wordlist}")
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        command += f" {hash_file}"
+        command_parts.append(hash_file)
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in john endpoint: {str(e)}")
@@ -495,12 +678,20 @@ def wpscan():
                 "error": "URL parameter is required"
             }), 400
 
-        command = f"wpscan --url {url}"
+        # Validate URL
+        if not validate_target(url):
+            logger.warning(f"Invalid URL parameter: {url}")
+            return jsonify({
+                "error": "Invalid URL parameter"
+            }), 400
+
+        # Build command as list for security
+        command_parts = ["wpscan", "--url", url]
 
         if additional_args:
-            command += f" {additional_args}"
+            command_parts.extend(shlex.split(additional_args))
 
-        result = execute_command(command)
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in wpscan endpoint: {str(e)}")
@@ -524,9 +715,22 @@ def enum4linux():
                 "error": "Target parameter is required"
             }), 400
 
-        command = f"enum4linux {additional_args} {target}"
+        # Validate target
+        if not validate_target(target):
+            logger.warning(f"Invalid target parameter: {target}")
+            return jsonify({
+                "error": "Invalid target parameter"
+            }), 400
 
-        result = execute_command(command)
+        # Build command as list for security
+        command_parts = ["enum4linux"]
+
+        if additional_args:
+            command_parts.extend(shlex.split(additional_args))
+
+        command_parts.append(target)
+
+        result = execute_command(command_parts)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in enum4linux endpoint: {str(e)}")
@@ -546,7 +750,7 @@ def health_check():
 
     for tool in essential_tools:
         try:
-            result = execute_command(f"which {tool}")
+            result = execute_command(["which", tool])
             tools_status[tool] = result["success"]
         except:
             tools_status[tool] = False
