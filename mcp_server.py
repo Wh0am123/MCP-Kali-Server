@@ -96,17 +96,17 @@ class KaliToolsClient:
             logger.error(f"Unexpected error: {str(e)}")
             return {"error": f"Unexpected error: {str(e)}", "success": False}
 
-    def execute_command(self, command: str) -> Dict[str, Any]:
+    def execute_command(self, action: str) -> Dict[str, Any]:
         """
-        Execute a generic command on the Kali server
-        
+        Execute a generic command on the Kali server using allowlisted actions
+
         Args:
-            command: Command to execute
-            
+            action: Action name from the command allowlist
+
         Returns:
             Command execution results
         """
-        return self.safe_post("api/command", {"command": command})
+        return self.safe_post("api/command", {"action": action})
 
     def check_health(self) -> Dict[str, Any]:
         """
@@ -233,17 +233,20 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         return kali_client.safe_post("api/tools/sqlmap", post_data)
 
     @mcp.tool()
-    def metasploit_run(module: str, options: Dict[str, Any] = {}) -> Dict[str, Any]:
+    def metasploit_run(module: str, options: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Execute a Metasploit module.
-        
+
         Args:
             module: The Metasploit module path
             options: Dictionary of module options
-            
+
         Returns:
             Module execution results
         """
+        if options is None:
+            options = {}
+
         data = {
             "module": module,
             "options": options
@@ -360,17 +363,17 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         return kali_client.check_health()
 
     @mcp.tool()
-    def execute_command(command: str) -> Dict[str, Any]:
+    def execute_command(action: str) -> Dict[str, Any]:
         """
-        Execute an arbitrary command on the Kali server.
-        
+        Execute a command on the Kali server using allowlisted actions.
+
         Args:
-            command: The command to execute
-            
+            action: The action name from the command allowlist (e.g., "list", "stat", "uptime", "whoami", "date")
+
         Returns:
             Command execution results
         """
-        return kali_client.execute_command(command)
+        return kali_client.execute_command(action)
 
     return mcp
 
