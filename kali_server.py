@@ -840,7 +840,6 @@ def get_capabilities():
 def execute_tool(tool_name):
     """Direct tool execution endpoint for MCP integration."""
     try:
-        params = request.json or {}
 
         # Map tool names to their corresponding endpoints
         tool_map = {
