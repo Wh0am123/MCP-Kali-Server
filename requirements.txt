@@ -1,6 +1,3 @@
-Flask==2.3.2          # Web framework
-gunicorn==22.0.0      # WSGI HTTP server for production
-psycopg2-binary==2.9.6 # PostgreSQL database adapter
-requests==2.32.4      # HTTP library for API calls
-pytest==7.4.0         # Testing framework
-mcp>=0.9.0            # Model Context Protocol SDK
+Flask>=3.0.0
+requests>=2.31.0
+mcp>=1.0.0
