@@ -16,7 +16,7 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:5000/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
