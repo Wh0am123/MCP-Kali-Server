@@ -19,6 +19,80 @@ The MCP Kali Server is designed for **educational and ethical security testing p
 - Deployment on production systems without proper security controls
 - Any illegal activities
 
+## Production Security Enhancements (v0.1.0+)
+
+The following security features have been implemented for production readiness:
+
+### ✅ Implemented Security Controls
+
+#### 1. **Input Validation & Sanitization**
+- ✓ Comprehensive input validation for all parameters
+- ✓ Regex-based validation for IPs, hostnames, URLs, file paths, and ports
+- ✓ Path traversal attack prevention (`..` detection, restricted directories)
+- ✓ Command injection protection through argument allowlisting
+- ✓ Special character filtering and validation
+- ✓ Maximum length restrictions on all inputs
+
+#### 2. **Command Injection Protection**
+- ✓ All commands built as lists (not strings) to prevent shell injection
+- ✓ Use of `shlex.split()` for safe argument parsing
+- ✓ Per-tool allowlists for additional arguments
+- ✓ Validation of all user-provided flags and options
+- ✓ `shell=False` enforcement in subprocess execution
+
+#### 3. **Rate Limiting**
+- ✓ Per-IP rate limiting (configurable: 10 requests/60 seconds default)
+- ✓ Automatic cleanup of expired rate limit entries
+- ✓ 429 status code responses when limits exceeded
+- ✓ Environment variable configuration for thresholds
+
+#### 4. **Request Tracking & Logging**
+- ✓ Unique request IDs for all API calls
+- ✓ Request/response timing metrics
+- ✓ Source IP logging
+- ✓ Structured logging with contextual information
+- ✓ Request lifecycle tracking
+
+#### 5. **Resource Limiting**
+- ✓ Command execution timeout limits (default: 180 seconds)
+- ✓ Maximum output size limits (default: 10MB)
+- ✓ Output truncation with warnings when limits exceeded
+- ✓ Graceful timeout handling with partial results
+
+#### 6. **Enhanced Error Handling**
+- ✓ Generic error messages to prevent information disclosure
+- ✓ Detailed logging of errors server-side
+- ✓ Try-catch blocks around all endpoint logic
+- ✓ Consistent JSON error response format
+- ✓ HTTP status code best practices
+
+#### 7. **Secure Temporary File Handling**
+- ✓ Use of `tempfile.NamedTemporaryFile` for Metasploit resources
+- ✓ Restrictive file permissions (0600) on temp files
+- ✓ Guaranteed cleanup in finally blocks
+- ✓ Secure temp file prefixes and suffixes
+
+#### 8. **HTTP Security Best Practices**
+- ✓ Request body validation (JSON required)
+- ✓ Content-Type validation
+- ✓ Parameter stripping (whitespace removal)
+- ✓ Success/failure flags in all responses
+
+### 📋 Additional Production Requirements
+
+For production deployment, you **MUST** also implement:
+
+- [ ] **Reverse proxy with authentication** (nginx + basic auth/OAuth)
+- [ ] **TLS/HTTPS encryption** with valid certificates
+- [ ] **Firewall rules** restricting access to authorized IPs only
+- [ ] **VPN or SSH tunneling** for remote access
+- [ ] **Centralized logging** with secure log storage
+- [ ] **Regular security audits** and penetration testing
+- [ ] **Incident response plan** and monitoring
+- [ ] **Backup and disaster recovery** procedures
+
+**See PRODUCTION_DEPLOYMENT.md for complete deployment guide.**
+
 ## Security Considerations
 
 ### 1. Authentication & Authorization
@@ -34,22 +108,26 @@ The MCP Kali Server is designed for **educational and ethical security testing p
 
 ### 2. Input Validation
 
-All API endpoints should validate input to prevent:
+✅ **Fully Implemented** - All API endpoints validate input to prevent:
 - Command injection attacks
 - Path traversal vulnerabilities
-- SQL injection (if database is used)
 - Malformed requests causing crashes
+- Buffer overflow from oversized inputs
 
 **Current implementation includes:**
-- Basic parameter validation
-- Required field checks
-- Type validation
+- ✓ Comprehensive parameter validation with regex patterns
+- ✓ Required field checks with type validation
+- ✓ Strict allowlists for command parameters and flags
+- ✓ File path validation against directory traversal
+- ✓ URL and hostname format validation
+- ✓ Port range validation (1-65535)
+- ✓ Maximum length restrictions on all inputs
+- ✓ Whitespace stripping and normalization
 
-**Recommendations for production:**
-- Implement strict input sanitization
-- Use allowlists for command parameters
-- Validate file paths against directory traversal
-- Limit command execution scope
+**Additional recommendations:**
+- Consider adding WAF (Web Application Firewall) at reverse proxy level
+- Implement additional business logic validation as needed
+- Regular security testing of validation rules
 
 ### 3. Network Security
 

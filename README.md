@@ -54,6 +54,44 @@ The original repository included:
 
 ---
 
+## 🔒 Security & Production Readiness
+
+### Production-Grade Security Features (v0.1.0+)
+
+This release includes comprehensive security hardening for production deployments:
+
+✅ **Implemented Security Controls:**
+- **Input Validation**: Comprehensive validation for all parameters (IP, hostname, URL, file paths, ports)
+- **Command Injection Protection**: All commands built as lists with strict argument allowlisting
+- **Rate Limiting**: Per-IP rate limiting (configurable, default: 10 req/60s)
+- **Request Tracking**: Unique request IDs and structured logging
+- **Resource Limits**: Command timeouts and output size limits
+- **Error Handling**: Generic error messages to prevent information disclosure
+- **Secure Temp Files**: Restrictive permissions and guaranteed cleanup
+- **Path Traversal Protection**: Validation against directory traversal attacks
+
+⚠️ **Production Deployment Requirements:**
+
+**You MUST implement these additional controls for production:**
+- ✓ Deploy behind reverse proxy with authentication (nginx + basic auth/OAuth)
+- ✓ Enable TLS/HTTPS with valid certificates
+- ✓ Configure firewall rules restricting access to authorized IPs
+- ✓ Use VPN or SSH tunneling for remote access
+- ✓ Enable centralized logging with secure log storage
+- ✓ Regular security audits and penetration testing
+
+**📚 Documentation:**
+- [Production Deployment Guide](PRODUCTION_DEPLOYMENT.md) - Complete deployment instructions
+- [Security Policy](SECURITY.md) - Detailed security considerations and best practices
+
+### Testing & Quality
+
+- 🧪 **Comprehensive Test Suite**: 80%+ code coverage with security-focused tests
+- 🔍 **Automated Security Scanning**: CodeQL, Bandit, and dependency auditing in CI/CD
+- ✅ **Type Safety**: Input validation and type checking throughout
+
+---
+
 ## 🛠️ Installation
 
 ### Prerequisites

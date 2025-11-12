@@ -1,6 +1,10 @@
-Flask==2.3.2          # Web framework
+# Production dependencies
+Flask==3.0.3          # Web framework (updated for security)
 gunicorn==22.0.0      # WSGI HTTP server for production
-psycopg2-binary==2.9.6 # PostgreSQL database adapter
 requests==2.32.4      # HTTP library for API calls
-pytest==7.4.0         # Testing framework
 mcp>=0.9.0            # Model Context Protocol SDK
+
+# Development and testing dependencies
+pytest==8.3.4         # Testing framework
+pytest-cov==6.0.0     # Code coverage for pytest
+pytest-mock==3.14.0   # Mocking for pytest
