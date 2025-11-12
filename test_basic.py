@@ -30,9 +30,9 @@ class TestKaliServerImports:
     def test_import_mcp_server(self):
         """Test that mcp_server module can be imported"""
         try:
-            import mcp_server
-            assert hasattr(mcp_server, 'KaliToolsClient')
-            assert hasattr(mcp_server, 'setup_mcp_server')
+            from mcp_server import KaliToolsClient, setup_mcp_server
+            assert KaliToolsClient is not None
+            assert setup_mcp_server is not None
         except ImportError as e:
             pytest.fail(f"Failed to import mcp_server: {e}")
 
