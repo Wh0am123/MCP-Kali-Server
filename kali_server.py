@@ -12,6 +12,8 @@ import subprocess
 import sys
 import traceback
 import threading
+import uuid
+from datetime import datetime
 from typing import Dict, Any
 from flask import Flask, request, jsonify
 
@@ -25,12 +27,204 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Try to import paramiko for SSH session management
+try:
+    import paramiko
+    PARAMIKO_AVAILABLE = True
+except ImportError:
+    PARAMIKO_AVAILABLE = False
+    paramiko = None  # Set to None so type hints don't fail
+    logger.warning("paramiko not available. SSH session management will be disabled.")
+
 # Configuration
 API_PORT = int(os.environ.get("API_PORT", 5000))
 DEBUG_MODE = os.environ.get("DEBUG_MODE", "0").lower() in ("1", "true", "yes", "y")
 COMMAND_TIMEOUT = 180  # 5 minutes default timeout
 
 app = Flask(__name__)
+
+# Global SSH session manager
+ssh_sessions: Dict[str, Any] = {}
+ssh_sessions_lock = threading.Lock()
+
+class SSHSessionManager:
+    """Manages persistent SSH sessions"""
+    
+    def __init__(self):
+        self.sessions: Dict[str, Any] = {}  # Use Any instead of paramiko.SSHClient to avoid import issues
+        self.session_info: Dict[str, Dict[str, Any]] = {}
+        self.lock = threading.Lock()
+    
+    def create_session(
+        self, 
+        hostname: str, 
+        port: int = 22, 
+        username: str = "", 
+        password: str = "", 
+        key_file: str = "",
+        timeout: int = 10
+    ) -> Dict[str, Any]:
+        """Create a new SSH session"""
+        if not PARAMIKO_AVAILABLE:
+            return {
+                "error": "paramiko not installed. Install it with: pip install paramiko",
+                "success": False
+            }
+        
+        session_id = str(uuid.uuid4())
+        
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            # Connect to the SSH server
+            if key_file:
+                # Use key file authentication
+                client.connect(
+                    hostname=hostname,
+                    port=port,
+                    username=username,
+                    key_filename=key_file,
+                    timeout=timeout,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
+            else:
+                # Use password authentication
+                client.connect(
+                    hostname=hostname,
+                    port=port,
+                    username=username,
+                    password=password,
+                    timeout=timeout,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
+            
+            with self.lock:
+                self.sessions[session_id] = client
+                self.session_info[session_id] = {
+                    "hostname": hostname,
+                    "port": port,
+                    "username": username,
+                    "created_at": datetime.now().isoformat()
+                }
+            
+            logger.info(f"SSH session {session_id} created for {username}@{hostname}:{port}")
+            
+            return {
+                "session_id": session_id,
+                "hostname": hostname,
+                "port": port,
+                "username": username,
+                "success": True
+            }
+        
+        except Exception as e:
+            logger.error(f"Failed to create SSH session: {str(e)}")
+            return {
+                "error": f"Failed to create SSH session: {str(e)}",
+                "success": False
+            }
+    
+    def execute_command(self, session_id: str, command: str) -> Dict[str, Any]:
+        """Execute a command in an existing SSH session"""
+        if not PARAMIKO_AVAILABLE:
+            return {
+                "error": "paramiko not installed",
+                "success": False
+            }
+        
+        with self.lock:
+            if session_id not in self.sessions:
+                return {
+                    "error": f"SSH session {session_id} not found",
+                    "success": False
+                }
+            client = self.sessions[session_id]
+        
+        try:
+            stdin, stdout, stderr = client.exec_command(command, timeout=COMMAND_TIMEOUT)
+            
+            # Read output
+            stdout_data = stdout.read().decode('utf-8', errors='replace')
+            stderr_data = stderr.read().decode('utf-8', errors='replace')
+            exit_status = stdout.channel.recv_exit_status()
+            
+            return {
+                "stdout": stdout_data,
+                "stderr": stderr_data,
+                "return_code": exit_status,
+                "success": exit_status == 0
+            }
+        
+        except Exception as e:
+            logger.error(f"Error executing command in SSH session {session_id}: {str(e)}")
+            return {
+                "error": f"Error executing command: {str(e)}",
+                "success": False
+            }
+    
+    def list_sessions(self) -> Dict[str, Any]:
+        """List all active SSH sessions"""
+        with self.lock:
+            sessions = []
+            for session_id, info in self.session_info.items():
+                is_active = session_id in self.sessions
+                sessions.append({
+                    "session_id": session_id,
+                    "hostname": info["hostname"],
+                    "port": info["port"],
+                    "username": info["username"],
+                    "active": is_active
+                })
+            
+            return {
+                "sessions": sessions,
+                "count": len(sessions),
+                "success": True
+            }
+    
+    def close_session(self, session_id: str) -> Dict[str, Any]:
+        """Close an SSH session"""
+        if not PARAMIKO_AVAILABLE:
+            return {
+                "error": "paramiko not installed",
+                "success": False
+            }
+        
+        with self.lock:
+            if session_id not in self.sessions:
+                return {
+                    "error": f"SSH session {session_id} not found",
+                    "success": False
+                }
+            
+            try:
+                client = self.sessions[session_id]
+                client.close()
+                del self.sessions[session_id]
+                del self.session_info[session_id]
+                logger.info(f"SSH session {session_id} closed")
+                return {
+                    "message": f"SSH session {session_id} closed successfully",
+                    "success": True
+                }
+            except Exception as e:
+                logger.error(f"Error closing SSH session {session_id}: {str(e)}")
+                # Clean up even if close fails
+                if session_id in self.sessions:
+                    del self.sessions[session_id]
+                if session_id in self.session_info:
+                    del self.session_info[session_id]
+                return {
+                    "message": f"SSH session {session_id} closed (with errors)",
+                    "error": str(e),
+                    "success": True
+                }
+
+# Initialize SSH session manager
+ssh_manager = SSHSessionManager()
 
 class CommandExecutor:
     """Class to handle command execution with better timeout management"""
@@ -514,6 +708,105 @@ def enum4linux():
             "error": f"Server error: {str(e)}"
         }), 500
 
+# SSH Session Management Endpoints
+@app.route("/api/tools/ssh/create", methods=["POST"])
+def ssh_create():
+    """Create a new SSH session."""
+    try:
+        params = request.json
+        hostname = params.get("hostname", "")
+        port = params.get("port", 22)
+        username = params.get("username", "")
+        password = params.get("password", "")
+        key_file = params.get("key_file", "")
+        timeout = params.get("timeout", 10)
+        
+        if not hostname:
+            return jsonify({
+                "error": "hostname parameter is required"
+            }), 400
+        
+        if not username:
+            return jsonify({
+                "error": "username parameter is required"
+            }), 400
+        
+        result = ssh_manager.create_session(
+            hostname=hostname,
+            port=port,
+            username=username,
+            password=password,
+            key_file=key_file,
+            timeout=timeout
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in ssh_create endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+@app.route("/api/tools/ssh/execute", methods=["POST"])
+def ssh_execute():
+    """Execute a command in an SSH session."""
+    try:
+        params = request.json
+        session_id = params.get("session_id", "")
+        command = params.get("command", "")
+        
+        if not session_id:
+            return jsonify({
+                "error": "session_id parameter is required"
+            }), 400
+        
+        if not command:
+            return jsonify({
+                "error": "command parameter is required"
+            }), 400
+        
+        result = ssh_manager.execute_command(session_id, command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in ssh_execute endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+@app.route("/api/tools/ssh/list", methods=["GET"])
+def ssh_list():
+    """List all active SSH sessions."""
+    try:
+        result = ssh_manager.list_sessions()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in ssh_list endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+@app.route("/api/tools/ssh/close", methods=["POST"])
+def ssh_close():
+    """Close an SSH session."""
+    try:
+        params = request.json
+        session_id = params.get("session_id", "")
+        
+        if not session_id:
+            return jsonify({
+                "error": "session_id parameter is required"
+            }), 400
+        
+        result = ssh_manager.close_session(session_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in ssh_close endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
 
 # Health check endpoint
 @app.route("/health", methods=["GET"])

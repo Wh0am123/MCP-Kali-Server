@@ -370,6 +370,84 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         """
         return kali_client.execute_command(command)
 
+    # SSH Session Management Tools
+    @mcp.tool()
+    def ssh_create_session(
+        hostname: str,
+        username: str,
+        password: str = "",
+        key_file: str = "",
+        port: int = 22,
+        timeout: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Create a persistent SSH session to a remote machine.
+        
+        Args:
+            hostname: The target hostname or IP address
+            username: SSH username
+            password: SSH password (optional if using key_file)
+            key_file: Path to SSH private key file (optional if using password)
+            port: SSH port (default: 22)
+            timeout: Connection timeout in seconds (default: 10)
+            
+        Returns:
+            Session creation results with session_id
+        """
+        data = {
+            "hostname": hostname,
+            "username": username,
+            "password": password,
+            "key_file": key_file,
+            "port": port,
+            "timeout": timeout
+        }
+        return kali_client.safe_post("api/tools/ssh/create", data)
+
+    @mcp.tool()
+    def ssh_execute_command(session_id: str, command: str) -> Dict[str, Any]:
+        """
+        Execute a command in an existing SSH session.
+        
+        Args:
+            session_id: The SSH session ID from ssh_create_session
+            command: The command to execute on the remote machine
+            
+        Returns:
+            Command execution results
+        """
+        data = {
+            "session_id": session_id,
+            "command": command
+        }
+        return kali_client.safe_post("api/tools/ssh/execute", data)
+
+    @mcp.tool()
+    def ssh_list_sessions() -> Dict[str, Any]:
+        """
+        List all active SSH sessions.
+        
+        Returns:
+            List of active SSH sessions with their details
+        """
+        return kali_client.safe_get("api/tools/ssh/list")
+
+    @mcp.tool()
+    def ssh_close_session(session_id: str) -> Dict[str, Any]:
+        """
+        Close an SSH session.
+        
+        Args:
+            session_id: The SSH session ID to close
+            
+        Returns:
+            Session closure results
+        """
+        data = {
+            "session_id": session_id
+        }
+        return kali_client.safe_post("api/tools/ssh/close", data)
+
     return mcp
 
 def parse_args():
