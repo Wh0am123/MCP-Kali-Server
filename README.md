@@ -46,9 +46,18 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 ## 🛠️ Installation and Running
 
 ### On your Kali Machine
+
+```bash
+sudo apt install mcp-kali-server
+```
+
+Otherwise for **bleeding edge**:
+
 ```bash
 git clone https://github.com/Wh0am123/MCP-Kali-Server.git
 cd MCP-Kali-Server
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python3 kali_server.py
 ```
