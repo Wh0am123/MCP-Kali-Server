@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Default configuration
-DEFAULT_KALI_SERVER = "http://localhost:5000" # change to your linux IP
+DEFAULT_KALI_SERVER = "http://localhost:5000"  # change to your linux IP
 DEFAULT_REQUEST_TIMEOUT = 300  # 5 minutes default timeout for API requests
 
 
@@ -34,7 +34,7 @@ class KaliToolsClient:
     def __init__(self, server_url: str, timeout: int = DEFAULT_REQUEST_TIMEOUT):
         """
         Initialize the Kali Tools Client
-        
+
         Args:
             server_url: URL of the Kali Tools API Server
             timeout: Request timeout in seconds
@@ -46,11 +46,11 @@ class KaliToolsClient:
     def safe_get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Perform a GET request with optional query parameters.
-        
+
         Args:
             endpoint: API endpoint path (without leading slash)
             params: Optional query parameters
-            
+
         Returns:
             Response data as dictionary
         """
@@ -74,11 +74,11 @@ class KaliToolsClient:
     def safe_post(self, endpoint: str, json_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform a POST request with JSON data.
-        
+
         Args:
             endpoint: API endpoint path (without leading slash)
             json_data: JSON data to send
-            
+
         Returns:
             Response data as dictionary
         """
@@ -96,22 +96,10 @@ class KaliToolsClient:
             logger.error(f"Unexpected error: {str(e)}")
             return {"error": f"Unexpected error: {str(e)}", "success": False}
 
-    def execute_command(self, command: str) -> Dict[str, Any]:
-        """
-        Execute a generic command on the Kali server
-        
-        Args:
-            command: Command to execute
-            
-        Returns:
-            Command execution results
-        """
-        return self.safe_post("api/command", {"command": command})
-
     def check_health(self) -> Dict[str, Any]:
         """
         Check the health of the Kali Tools API Server
-        
+
         Returns:
             Health status information
         """
@@ -121,28 +109,33 @@ class KaliToolsClient:
 def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     """
     Set up the MCP server with all tool functions
-    
+
     Args:
         kali_client: Initialized KaliToolsClient
-        
+
     Returns:
         Configured FastMCP instance
     """
     mcp = FastMCP("kali-mcp")
 
     @mcp.tool()
-    def nmap_scan(target: str, scan_type: str = "-sV", ports: str = "", additional_args: str = "") -> Dict[str, Any]:
+    def nmap_scan(
+        target: str,
+        scan_type: str = "-sCV",
+        ports: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
         """
         Execute an Nmap scan against a target.
-        
+
         Args:
             target: The IP address or hostname to scan
-            scan_type: Scan type (e.g., -sV for version detection)
-            ports: Comma-separated list of ports or port ranges
-            additional_args: Additional Nmap arguments
-            
+            scan_type: Scan type (e.g., -sCV for service/version detection)
+            ports: Comma-separated list of ports or port ranges (e.g., "22,80,443" or "1-1000")
+            additional_args: Additional Nmap arguments (e.g., "-T4 -Pn")
+
         Returns:
-            Scan results
+            Scan results with stdout, stderr, and status information
         """
         data = {
             "target": target,
@@ -153,18 +146,23 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         return kali_client.safe_post("api/tools/nmap", data)
 
     @mcp.tool()
-    def gobuster_scan(url: str, mode: str = "dir", wordlist: str = "/usr/share/wordlists/dirb/common.txt", additional_args: str = "") -> Dict[str, Any]:
+    def gobuster_scan(
+        url: str,
+        mode: str = "dir",
+        wordlist: str = "/usr/share/wordlists/dirb/common.txt",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
         """
         Execute Gobuster to find directories, DNS subdomains, or virtual hosts.
-        
+
         Args:
             url: The target URL
-            mode: Scan mode (dir, dns, fuzz, vhost)
-            wordlist: Path to wordlist file
+            mode: Scan mode - must be one of: dir, dns, fuzz, vhost
+            wordlist: Path to wordlist file on the Kali server
             additional_args: Additional Gobuster arguments
-            
+
         Returns:
-            Scan results
+            Scan results with found directories/subdomains
         """
         data = {
             "url": url,
@@ -175,17 +173,21 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         return kali_client.safe_post("api/tools/gobuster", data)
 
     @mcp.tool()
-    def dirb_scan(url: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt", additional_args: str = "") -> Dict[str, Any]:
+    def dirb_scan(
+        url: str,
+        wordlist: str = "/usr/share/wordlists/dirb/common.txt",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
         """
         Execute Dirb web content scanner.
-        
+
         Args:
             url: The target URL
-            wordlist: Path to wordlist file
+            wordlist: Path to wordlist file on the Kali server
             additional_args: Additional Dirb arguments
-            
+
         Returns:
-            Scan results
+            Scan results with discovered directories and files
         """
         data = {
             "url": url,
@@ -198,13 +200,13 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def nikto_scan(target: str, additional_args: str = "") -> Dict[str, Any]:
         """
         Execute Nikto web server scanner.
-        
+
         Args:
-            target: The target URL or IP
+            target: The target URL or IP address
             additional_args: Additional Nikto arguments
-            
+
         Returns:
-            Scan results
+            Scan results with identified vulnerabilities and issues
         """
         data = {
             "target": target,
@@ -216,14 +218,14 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def sqlmap_scan(url: str, data: str = "", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute SQLmap SQL injection scanner.
-        
+
         Args:
             url: The target URL
-            data: POST data string
+            data: POST data string for testing POST parameters
             additional_args: Additional SQLmap arguments
-            
+
         Returns:
-            Scan results
+            Scan results with SQL injection findings
         """
         post_data = {
             "url": url,
@@ -233,17 +235,20 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         return kali_client.safe_post("api/tools/sqlmap", post_data)
 
     @mcp.tool()
-    def metasploit_run(module: str, options: Dict[str, Any] = {}) -> Dict[str, Any]:
+    def metasploit_run(module: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute a Metasploit module.
-        
+
         Args:
-            module: The Metasploit module path
-            options: Dictionary of module options
-            
+            module: The Metasploit module path (e.g., "exploit/windows/smb/ms17_010_eternalblue")
+            options: Dictionary of module options (e.g., {"RHOSTS": "192.168.1.1", "LHOST": "192.168.1.100"})
+
         Returns:
             Module execution results
         """
+        if options is None:
+            options = {}
+
         data = {
             "module": module,
             "options": options
@@ -262,18 +267,18 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     ) -> Dict[str, Any]:
         """
         Execute Hydra password cracking tool.
-        
+
         Args:
             target: Target IP or hostname
-            service: Service to attack (ssh, ftp, http-post-form, etc.)
+            service: Service to attack (e.g., ssh, ftp, http-post-form)
             username: Single username to try
-            username_file: Path to username file
+            username_file: Path to username file on the Kali server
             password: Single password to try
-            password_file: Path to password file
+            password_file: Path to password file on the Kali server
             additional_args: Additional Hydra arguments
-            
+
         Returns:
-            Attack results
+            Attack results with found credentials
         """
         data = {
             "target": target,
@@ -295,15 +300,15 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     ) -> Dict[str, Any]:
         """
         Execute John the Ripper password cracker.
-        
+
         Args:
-            hash_file: Path to file containing hashes
-            wordlist: Path to wordlist file
-            format_type: Hash format type
+            hash_file: Path to file containing hashes on the Kali server
+            wordlist: Path to wordlist file on the Kali server
+            format_type: Hash format type (e.g., "md5", "sha256")
             additional_args: Additional John arguments
-            
+
         Returns:
-            Cracking results
+            Cracking results with recovered passwords
         """
         data = {
             "hash_file": hash_file,
@@ -317,13 +322,13 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def wpscan_analyze(url: str, additional_args: str = "") -> Dict[str, Any]:
         """
         Execute WPScan WordPress vulnerability scanner.
-        
+
         Args:
             url: The target WordPress URL
             additional_args: Additional WPScan arguments
-            
+
         Returns:
-            Scan results
+            Scan results with WordPress vulnerabilities and information
         """
         data = {
             "url": url,
@@ -335,13 +340,13 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def enum4linux_scan(target: str, additional_args: str = "-a") -> Dict[str, Any]:
         """
         Execute Enum4linux Windows/Samba enumeration tool.
-        
+
         Args:
             target: The target IP or hostname
-            additional_args: Additional enum4linux arguments
-            
+            additional_args: Additional enum4linux arguments (default: "-a" for all enumeration)
+
         Returns:
-            Enumeration results
+            Enumeration results with Windows/Samba information
         """
         data = {
             "target": target,
@@ -353,36 +358,49 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def server_health() -> Dict[str, Any]:
         """
         Check the health status of the Kali API server.
-        
+
         Returns:
-            Server health information
+            Server health information including available tools status
         """
         return kali_client.check_health()
-
-    @mcp.tool()
-    def execute_command(command: str) -> Dict[str, Any]:
-        """
-        Execute an arbitrary command on the Kali server.
-        
-        Args:
-            command: The command to execute
-            
-        Returns:
-            Command execution results
-        """
-        return kali_client.execute_command(command)
 
     return mcp
 
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Run the Kali MCP Client")
-    parser.add_argument("--server", type=str, default=DEFAULT_KALI_SERVER,
-                      help=f"Kali API server URL (default: {DEFAULT_KALI_SERVER})")
-    parser.add_argument("--timeout", type=int, default=DEFAULT_REQUEST_TIMEOUT,
-                      help=f"Request timeout in seconds (default: {DEFAULT_REQUEST_TIMEOUT})")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser = argparse.ArgumentParser(
+        description="Run the Kali MCP Client",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Connect to local Kali server
+  python3 mcp_server.py --server http://localhost:5000
+
+  # Connect to remote Kali server with custom timeout
+  python3 mcp_server.py --server http://192.168.1.100:5000 --timeout 600
+
+  # Enable debug logging
+  python3 mcp_server.py --server http://localhost:5000 --debug
+        """
+    )
+    parser.add_argument(
+        "--server",
+        type=str,
+        default=DEFAULT_KALI_SERVER,
+        help=f"Kali API server URL (default: {DEFAULT_KALI_SERVER})"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_REQUEST_TIMEOUT,
+        help=f"Request timeout in seconds (default: {DEFAULT_REQUEST_TIMEOUT})"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging"
+    )
     return parser.parse_args()
 
 
@@ -405,17 +423,22 @@ def main():
         logger.warning("MCP server will start, but tool execution may fail")
     else:
         logger.info(f"Successfully connected to Kali API server at {args.server}")
-        logger.info(f"Server health status: {health['status']}")
+        logger.info(f"Server health status: {health.get('status', 'unknown')}")
         if not health.get("all_essential_tools_available", False):
             logger.warning("Not all essential tools are available on the Kali server")
-            missing_tools = [tool for tool, available in health.get("tools_status", {}).items() if not available]
+            missing_tools = [
+                tool for tool, available in health.get("tools_status", {}).items()
+                if not available
+            ]
             if missing_tools:
                 logger.warning(f"Missing tools: {', '.join(missing_tools)}")
 
     # Set up and run the MCP server
     mcp = setup_mcp_server(kali_client)
     logger.info("Starting Kali MCP server")
+    logger.info(f"Available tools: nmap, gobuster, dirb, nikto, sqlmap, metasploit, hydra, john, wpscan, enum4linux")
     mcp.run()
+
 
 if __name__ == "__main__":
     main()
