@@ -861,6 +861,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run the Kali Linux API Server")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--port", type=int, default=API_PORT, help=f"Port for the API server (default: {API_PORT})")
+    parser.add_argument("--ip", type=str, default="127.0.0.1", help="IP address to bind the server to (default: 127.0.0.1 for localhost only)")
     return parser.parse_args()
 
 
@@ -876,10 +877,7 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
 
     if args.port != API_PORT:
-        api_port = args.port
-
-    logger.info(f"Starting Kali Linux Tools API Server on port {api_port}")
-    logger.info(f"Debug mode: {debug_mode}")
-    logger.info(f"Command timeout: {COMMAND_TIMEOUT} seconds")
-
-    app.run(host="0.0.0.0", port=api_port, debug=debug_mode)
+        API_PORT = args.port
+    
+    logger.info(f"Starting Kali Linux Tools API Server on {args.ip}:{API_PORT}")
+    app.run(host=args.ip, port=API_PORT, debug=DEBUG_MODE)

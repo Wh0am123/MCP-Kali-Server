@@ -54,7 +54,7 @@ The original repository included:
 
 ---
 
-## 🛠️ Installation
+## 🛠️ Installation and Running
 
 ### Prerequisites
 
