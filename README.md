@@ -186,6 +186,23 @@ The MCP server provides access to the following security tools:
 - **Password Cracking:** hydra, john
 - **SMB Enumeration:** enum4linux
 - **Exploitation Framework:** metasploit
+- **System Mapping:** systems_cartographer
+
+#### 🗺️ Systems Cartographer
+
+The Systems Cartographer is a specialized tool that maps complex systems, dependencies, and failure modes. It analyzes infrastructure to identify single points of failure, map dependencies, and provide resilience recommendations.
+
+**Analysis Modes:**
+- `network` - Map network topology and discover hosts
+- `services` - Analyze service dependencies
+- `processes` - Map process trees and resource usage
+- `filesystem` - Analyze filesystem and mount points
+- `full` - Comprehensive system mapping
+
+**Depth Levels:**
+- `basic` - Quick overview
+- `detailed` - Moderate depth analysis
+- `comprehensive` - Thorough analysis
 
 ### Example Commands
 
@@ -196,6 +213,9 @@ Through your MCP client (like Claude Desktop), you can use natural language:
 "Use gobuster to enumerate directories on http://example.com"
 "Check http://example.com for SQL injection vulnerabilities"
 "Crack the hashes in /path/to/hashfile using john"
+"Map the network topology of 192.168.1.0/24 in detailed mode"
+"Analyze service dependencies on the system"
+"What happens if this service dies?"
 ```
 
 ### API Endpoints
@@ -210,6 +230,16 @@ curl http://localhost:5000/health
 curl -X POST http://localhost:5000/api/tools/nmap \
   -H "Content-Type: application/json" \
   -d '{"target": "192.168.1.1", "scan_type": "quick"}'
+
+# Map network topology with Systems Cartographer
+curl -X POST http://localhost:5000/api/tools/cartographer \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "network", "target": "192.168.1.0/24", "depth": "detailed"}'
+
+# Analyze service dependencies
+curl -X POST http://localhost:5000/api/tools/cartographer \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "services", "depth": "comprehensive"}'
 
 # Run custom command
 curl -X POST http://localhost:5000/api/command \

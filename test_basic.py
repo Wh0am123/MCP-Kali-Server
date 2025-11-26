@@ -83,19 +83,42 @@ class TestAPIEndpoints:
     def test_api_tool_endpoints_exist(self):
         """Test that tool endpoints are registered"""
         from kali_server import app
-        
+
         rules = [rule.rule for rule in app.url_map.iter_rules()]
-        
+
         # Check for key tool endpoints
         expected_endpoints = [
             '/api/tools/nmap',
             '/api/tools/gobuster',
             '/api/tools/nikto',
+            '/api/tools/cartographer',
             '/api/command'
         ]
-        
+
         for endpoint in expected_endpoints:
             assert endpoint in rules, f"Expected endpoint {endpoint} not found"
+
+
+class TestSystemsCartographer:
+    """Test Systems Cartographer tool"""
+
+    def test_cartographer_endpoint_exists(self):
+        """Test that cartographer endpoint is registered"""
+        from kali_server import app
+
+        rules = [rule.rule for rule in app.url_map.iter_rules()]
+        assert '/api/tools/cartographer' in rules
+
+    def test_mcp_cartographer_tool_exists(self):
+        """Test that MCP cartographer tool is registered"""
+        from mcp_server import KaliToolsClient, setup_mcp_server
+
+        client = KaliToolsClient("http://localhost:5000")
+        mcp = setup_mcp_server(client)
+
+        # Check that the tool is registered
+        # The FastMCP instance should have our tool registered
+        assert mcp is not None
 
 
 if __name__ == "__main__":

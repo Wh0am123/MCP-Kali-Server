@@ -536,6 +536,120 @@ def enum4linux():
         }), 500
 
 
+@app.route("/api/tools/cartographer", methods=["POST"])
+def systems_cartographer():
+    """
+    Map complex systems, dependencies, and failure modes.
+
+    The Systems Cartographer analyzes infrastructure, identifies single points of failure,
+    maps dependencies, and provides resilience recommendations.
+    """
+    try:
+        params = request.json
+        analysis_mode = params.get("mode", "network")
+        target = params.get("target", "")
+        depth = params.get("depth", "basic")
+
+        # Validate mode
+        valid_modes = ["network", "services", "processes", "filesystem", "full"]
+        if analysis_mode not in valid_modes:
+            logger.warning(f"Invalid cartographer mode: {analysis_mode}")
+            return jsonify({
+                "error": f"Invalid mode: {analysis_mode}. Must be one of: {', '.join(valid_modes)}"
+            }), 400
+
+        # Validate depth
+        valid_depths = ["basic", "detailed", "comprehensive"]
+        if depth not in valid_depths:
+            logger.warning(f"Invalid depth: {depth}")
+            return jsonify({
+                "error": f"Invalid depth: {depth}. Must be one of: {', '.join(valid_depths)}"
+            }), 400
+
+        logger.info(f"Systems Cartographer: mode={analysis_mode}, target={target}, depth={depth}")
+
+        # Build command based on mode
+        if analysis_mode == "network":
+            if not target:
+                return jsonify({"error": "Target parameter required for network mode"}), 400
+
+            # Network topology mapping using nmap and traceroute
+            if depth == "basic":
+                command = ["nmap", "-sn", "-T4", target]
+            elif depth == "detailed":
+                command = ["nmap", "-sV", "-T4", "-p-", target]
+            else:  # comprehensive
+                command = ["nmap", "-A", "-T4", "-p-", "--script=discovery", target]
+
+        elif analysis_mode == "services":
+            # Service dependency mapping
+            if depth == "basic":
+                command = ["systemctl", "list-units", "--type=service", "--state=running"]
+            elif depth == "detailed":
+                command = ["systemctl", "list-dependencies", "--all"]
+            else:  # comprehensive
+                # Use ss to show network connections and listening services
+                command = ["ss", "-tulpn"]
+
+        elif analysis_mode == "processes":
+            # Process tree and resource mapping
+            if depth == "basic":
+                command = ["ps", "aux", "--forest"]
+            elif depth == "detailed":
+                command = ["pstree", "-palu"]
+            else:  # comprehensive
+                # Show process tree with threads and connections
+                command = ["ps", "-eo", "pid,ppid,user,stat,comm,cmd", "--forest"]
+
+        elif analysis_mode == "filesystem":
+            # Filesystem and mount point analysis
+            if depth == "basic":
+                command = ["df", "-h"]
+            elif depth == "detailed":
+                command = ["lsblk", "-f"]
+            else:  # comprehensive
+                command = ["mount"]
+
+        elif analysis_mode == "full":
+            # Comprehensive system mapping - run multiple commands
+            if not target:
+                return jsonify({"error": "Target parameter required for full mode"}), 400
+
+            # For full mode, we'll do network scan
+            command = ["nmap", "-sV", "-T4", "-p", "1-1000", target]
+
+        result = execute_command(command)
+
+        # Add metadata about the analysis
+        result["analysis_metadata"] = {
+            "mode": analysis_mode,
+            "target": target,
+            "depth": depth,
+            "timestamp": subprocess.check_output(["date", "+%Y-%m-%d %H:%M:%S"]).decode().strip(),
+            "analyzer": "Systems Cartographer v1.0"
+        }
+
+        # Add failure mode analysis hints
+        result["failure_analysis"] = {
+            "note": "Review output for single points of failure, critical dependencies, and exposed services",
+            "questions_to_ask": [
+                "What happens if this node/service dies?",
+                "Are there redundant paths?",
+                "Which services are internet-facing?",
+                "What are the trust boundaries?"
+            ]
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in cartographer endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+
 # Health check endpoint
 @app.route("/health", methods=["GET"])
 def health_check():

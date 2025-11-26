@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Systems Cartographer Tool**: New modular agent for mapping complex systems, dependencies, and failure modes
+  - Network topology mapping with multiple depth levels
+  - Service dependency analysis
+  - Process tree mapping
+  - Filesystem and mount point analysis
+  - Comprehensive system mapping mode
+  - Failure mode analysis with resilience recommendations
+- API endpoint `/api/tools/cartographer` for systems mapping
+- MCP tool `systems_cartographer_map` for AI-assisted infrastructure analysis
+- Tests for Systems Cartographer functionality
+- Documentation for Systems Cartographer in README
 - Initial release preparation
 - Comprehensive security documentation
 - Environment configuration template (.env.example)
@@ -16,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Code style improvements and linting fixes
-- Enhanced documentation in README.md
+- Enhanced documentation in README.md with Systems Cartographer examples
+- Updated test suite to include cartographer endpoint verification
 
 ### Security
 - Added input validation guidelines

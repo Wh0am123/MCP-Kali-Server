@@ -335,11 +335,11 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     def enum4linux_scan(target: str, additional_args: str = "-a") -> Dict[str, Any]:
         """
         Execute Enum4linux Windows/Samba enumeration tool.
-        
+
         Args:
             target: The target IP or hostname
             additional_args: Additional enum4linux arguments
-            
+
         Returns:
             Enumeration results
         """
@@ -348,6 +348,40 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
             "additional_args": additional_args
         }
         return kali_client.safe_post("api/tools/enum4linux", data)
+
+    @mcp.tool()
+    def systems_cartographer_map(
+        mode: str = "network",
+        target: str = "",
+        depth: str = "basic"
+    ) -> Dict[str, Any]:
+        """
+        Map complex systems, dependencies, and failure modes. The Systems Cartographer analyzes
+        infrastructure, identifies single points of failure, maps dependencies, and provides
+        resilience recommendations. Always asks: "What happens if this node dies?"
+
+        Args:
+            mode: Analysis mode - network (map network topology), services (service dependencies),
+                  processes (process tree), filesystem (mounts and storage), full (comprehensive)
+            target: Target IP/hostname (required for network and full modes)
+            depth: Analysis depth - basic (quick overview), detailed (moderate depth),
+                   comprehensive (thorough analysis)
+
+        Returns:
+            System mapping with dependency analysis, failure modes, and recommendations
+
+        Examples:
+            - Map network topology: mode="network", target="192.168.1.0/24", depth="detailed"
+            - Analyze services: mode="services", depth="comprehensive"
+            - Map processes: mode="processes", depth="detailed"
+            - Full analysis: mode="full", target="example.com", depth="comprehensive"
+        """
+        data = {
+            "mode": mode,
+            "target": target,
+            "depth": depth
+        }
+        return kali_client.safe_post("api/tools/cartographer", data)
 
     @mcp.tool()
     def server_health() -> Dict[str, Any]:
