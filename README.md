@@ -54,57 +54,64 @@ The original repository included:
 
 ---
 
-## 🛠️ Installation
+## 🛠️ Installation and Running
 
-### Prerequisites
-
-- **Operating System:** Kali Linux (recommended) or any Linux distribution
-- **Python:** 3.11 or higher
-- **Docker:** (optional) for containerized deployment
-
-### Method 1: Quick Start with Docker (Recommended)
-
+### On your Kali Machine
 ```bash
-# Clone the repository
-git clone https://github.com/canstralian/forked-u-MCP-Kali-Server.git
-cd forked-u-MCP-Kali-Server
-
-# Build and run with docker-compose
-docker-compose up -d
-
-# Or build and run manually
-docker build -t mcp-kali-server .
-docker run -p 5000:5000 mcp-kali-server
-```
-
-### Method 2: Installation from Source
-
-**On the Linux machine (API Server):**
-
-```bash
-# Clone the repository
-git clone https://github.com/canstralian/forked-u-MCP-Kali-Server.git
-cd forked-u-MCP-Kali-Server
-
-# Create and activate virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+git clone https://github.com/Wh0am123/MCP-Kali-Server.git
+cd MCP-Kali-Server
 pip install -r requirements.txt
-
-# Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your settings
-
-# Run the server
 python3 kali_server.py
 ```
 
-**On your MCP Client (Windows or Linux):**
+**Command Line Options:**
+- `--ip <address>`: Specify the IP address to bind the server to (default: `127.0.0.1` for localhost only)
+  - Use `127.0.0.1` for local connections only (secure, recommended)
+  - Use `0.0.0.0` to allow connections from any network interface (very dangerous; use with caution)
+  - Use a specific IP address to bind to a particular network interface
+- `--port <port>`: Specify the port number (default: `5000`)
+- `--debug`: Enable debug mode for verbose logging
+
+**Examples:**
+```bash
+# Run on localhost only (secure, default)
+python3 kali_server.py
+
+# Run on all interfaces (less secure, useful for remote access)
+python3 kali_server.py --ip 0.0.0.0
+
+# Run on a specific IP and custom port
+python3 kali_server.py --ip 192.168.1.100 --port 8080
+
+# Run with debug mode
+python3 kali_server.py --debug
+```
+
+### On your MCP client machine (can be local or remote)
 
 ```bash
-python3 /absolute/path/to/mcp_server.py --server http://LINUX_IP:5000
+git clone https://github.com/Wh0am123/MCP-Kali-Server.git
+cd MCP-Kali-Server
+pip install -r requirements.txt
+```
+
+If you're running the client and server on the same machine:
+
+```bash
+./mcp_server.py --server http://127.0.0.1:5000
+```
+
+If separate machines, create an ssh tunnel to your Kali MCP server, then launch the client:
+
+```bash
+ssh -L 5000:localhost:5000 user@KALI_IP
+./mcp_server.py --server http://127.0.0.1:5000
+```
+
+NOTE: If you're openly hosting the Kali MCP server on your network (`kali_server --IP...`), you don't need the SSH tunnel ⚠️(this is highly discouraged)⚠️.
+
+```bash
+./mcp_server.py --server http://LINUX_IP:5000
 ```
 
 ### Method 3: Development Installation
