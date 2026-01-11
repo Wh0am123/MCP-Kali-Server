@@ -1,9 +1,9 @@
 # MCP Kali Server
 
-**Kali MCP Server** is a lightweight API bridge that connects MCP Clients (e.g: Claude Desktop, [5ire](https://github.com/nanbingxyz/5ire)) to the API server which allows excuting commands on a Linux terminal.
+**Kali MCP Server** is a lightweight API bridge that connects MCP Clients (e.g: Claude Desktop or [5ire](https://github.com/nanbingxyz/5ire)) to the API server which allows executing commands on a Linux terminal.
 
 This allows the MCP to run terminal commands like `nmap`, `nxc` or any other tool, interact with web applications using tools like `curl`, `wget`, `gobuster`. 
- And perform **AI-assisted penetration testing**, solving **CTF web challenge** in real time, helping in **solving machines from HTB or THM**.
+And perform **AI-assisted penetration testing**, solving **CTF web challenge** in real time, helping in **solving machines from HTB or THM**.
 
 ## My Medium Article on This Tool
 
@@ -25,17 +25,18 @@ The goal is to enable AI-driven offensive security testing by:
 Here are some example for my testing (I used google's AI `gemini 2.0 flash`)
 
 ### Example solving my web CTF challenge in RamadanCTF
+
 https://github.com/user-attachments/assets/dc93b71d-9a4a-4ad5-8079-2c26c04e5397
 
 ### Trying to solve machine "code" from HTB
-https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 
+https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 
 ---
 
 ## 🚀 Features
 
-- 🧠 **AI Endpoint Integration**: Connect your kali to any MCP of your liking such as claude desktop or 5ier.
+- 🧠 **AI Endpoint Integration**: Connect your Kali to any MCP of your liking such as Claude Desktop or 5ier.
 - 🖥️ **Command Execution API**: Exposes a controlled API to execute terminal commands on your Kali Linux machine.
 - 🕸️ **Web Challenge Support**: AI can interact with websites and APIs, capture flags via `curl` and any other tool AI the needs.
 - 🔐 **Designed for Offensive Security Professionals**: Ideal for red teamers, bug bounty hunters, or CTF players automating common tasks.
@@ -45,9 +46,18 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 ## 🛠️ Installation and Running
 
 ### On your Kali Machine
+
+```bash
+sudo apt install mcp-kali-server
+```
+
+Otherwise for **bleeding edge**:
+
 ```bash
 git clone https://github.com/Wh0am123/MCP-Kali-Server.git
 cd MCP-Kali-Server
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python3 kali_server.py
 ```
@@ -61,6 +71,7 @@ python3 kali_server.py
 - `--debug`: Enable debug mode for verbose logging
 
 **Examples:**
+
 ```bash
 # Run on localhost only (secure, default)
 python3 kali_server.py
@@ -102,8 +113,9 @@ NOTE: If you're openly hosting the Kali MCP server on your network (`kali_server
 ./mcp_server.py --server http://LINUX_IP:5000
 ```
 
-#### Configuration for claude desktop:
-edit (C:\Users\USERNAME\AppData\Roaming\Claude\claude_desktop_config.json)
+#### Configuration for Claude Desktop:
+
+Edit (`C:\Users\USERNAME\AppData\Roaming\Claude\claude_desktop_config.json`)
 
 ```json
 {
@@ -121,11 +133,12 @@ edit (C:\Users\USERNAME\AppData\Roaming\Claude\claude_desktop_config.json)
 ```
 
 #### Configuration for [5ire](https://github.com/nanbingxyz/5ire) Desktop Application:
+
 - Simply add an MCP with the command `python3 /absolute/path/to/mcp_server.py http://LINUX_IP:5000` and it will automatically generate the needed configuration files.
 
 ## 🔮 Other Possibilities
 
-There are more possibilites than described since the AI model can now execute commands on the terminal. Here are some example:
+There are more possibilities than described since the AI model can now execute commands on the terminal. Here are some example:
 
 - Memory forensics using Volatility
   - Automating memory analysis tasks such as process enumeration, DLL injection checks, and registry extraction from memory dumps.
@@ -133,7 +146,8 @@ There are more possibilites than described since the AI model can now execute co
 - Disk forensics with SleuthKit
   - Automating analysis from disk images, timeline generation, file carving, and hash comparisons.
 
-
 ## ⚠️ Disclaimer:
+
 This project is intended solely for educational and ethical testing purposes. Any misuse of the information or tools provided — including unauthorized access, exploitation, or malicious activity — is strictly prohibited.
+
 The author assumes no responsibility for misuse.
