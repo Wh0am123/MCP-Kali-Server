@@ -4,13 +4,12 @@
 
 # some of the code here was inspired from https://github.com/whit3rabbit0/project_astro , be sure to check them out
 
-import sys
-import os
 import argparse
 import logging
-from typing import Dict, Any, Optional
-import requests
+import sys
+from typing import Any, Dict, Optional
 
+import requests
 from mcp.server.fastmcp import FastMCP
 
 # Configure logging
@@ -126,9 +125,9 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     Returns:
         Configured FastMCP instance
     """
-    mcp = FastMCP("kali-mcp")
+    mcp = FastMCP("kali_mcp")
     
-    @mcp.tool()
+    @mcp.tool(name="nmap_scan")
     def nmap_scan(target: str, scan_type: str = "-sV", ports: str = "", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute an Nmap scan against a target.
@@ -150,7 +149,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/nmap", data)
 
-    @mcp.tool()
+    @mcp.tool(name="gobuster_scan")
     def gobuster_scan(url: str, mode: str = "dir", wordlist: str = "/usr/share/wordlists/dirb/common.txt", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute Gobuster to find directories, DNS subdomains, or virtual hosts.
@@ -172,7 +171,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/gobuster", data)
 
-    @mcp.tool()
+    @mcp.tool(name="dirb_scan")
     def dirb_scan(url: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute Dirb web content scanner.
@@ -192,7 +191,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/dirb", data)
 
-    @mcp.tool()
+    @mcp.tool(name="nikto_scan")
     def nikto_scan(target: str, additional_args: str = "") -> Dict[str, Any]:
         """
         Execute Nikto web server scanner.
@@ -210,7 +209,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/nikto", data)
 
-    @mcp.tool()
+    @mcp.tool(name="sqlmap_scan")
     def sqlmap_scan(url: str, data: str = "", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute SQLmap SQL injection scanner.
@@ -230,7 +229,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/sqlmap", post_data)
 
-    @mcp.tool()
+    @mcp.tool(name="metasploit_run")
     def metasploit_run(module: str, options: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Execute a Metasploit module.
@@ -248,7 +247,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/metasploit", data)
 
-    @mcp.tool()
+    @mcp.tool(name="hydra_attack")
     def hydra_attack(
         target: str, 
         service: str, 
@@ -284,7 +283,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/hydra", data)
 
-    @mcp.tool()
+    @mcp.tool(name="john_crack")
     def john_crack(
         hash_file: str, 
         wordlist: str = "/usr/share/wordlists/rockyou.txt", 
@@ -311,7 +310,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/john", data)
 
-    @mcp.tool()
+    @mcp.tool(name="wpscan_analyze" )
     def wpscan_analyze(url: str, additional_args: str = "") -> Dict[str, Any]:
         """
         Execute WPScan WordPress vulnerability scanner.
@@ -329,7 +328,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/wpscan", data)
 
-    @mcp.tool()
+    @mcp.tool(name="enum4linux_scan")
     def enum4linux_scan(target: str, additional_args: str = "-a") -> Dict[str, Any]:
         """
         Execute Enum4linux Windows/Samba enumeration tool.
@@ -347,7 +346,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/enum4linux", data)
 
-    @mcp.tool()
+    @mcp.tool(name="server_health")
     def server_health() -> Dict[str, Any]:
         """
         Check the health status of the Kali API server.
@@ -357,7 +356,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         """
         return kali_client.check_health()
     
-    @mcp.tool()
+    @mcp.tool(name="execute_command")
     def execute_command(command: str) -> Dict[str, Any]:
         """
         Execute an arbitrary command on the Kali server.
