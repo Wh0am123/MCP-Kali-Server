@@ -409,10 +409,10 @@ def hydra():
         elif password_file:
             command += f" -P {password_file}"
         
+        command += f" {target} {service}"
+
         if additional_args:
             command += f" {additional_args}"
-        
-        command += f" {target} {service}"
         
         result = execute_command(command)
         return jsonify(result)
