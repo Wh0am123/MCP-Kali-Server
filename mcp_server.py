@@ -373,7 +373,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Run the Kali MCP Client")
+    parser = argparse.ArgumentParser(description="Run the MCP Kali client")
     parser.add_argument("--server", type=str, default=DEFAULT_KALI_SERVER, 
                       help=f"Kali API server URL (default: {DEFAULT_KALI_SERVER})")
     parser.add_argument("--timeout", type=int, default=DEFAULT_REQUEST_TIMEOUT,
@@ -409,7 +409,7 @@ def main():
     
     # Set up and run the MCP server
     mcp = setup_mcp_server(kali_client)
-    logger.info("Starting Kali MCP server")
+    logger.info("Starting MCP Kali server")
     mcp.run()
 
 if __name__ == "__main__":

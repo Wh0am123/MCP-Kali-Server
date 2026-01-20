@@ -1,6 +1,6 @@
 # MCP Kali Server
 
-**Kali MCP Server** is a lightweight API bridge that connects MCP Clients (e.g: Claude Desktop or [5ire](https://github.com/nanbingxyz/5ire)) to the API server which allows executing commands on a Linux terminal.
+**MCP Kali Server** is a lightweight API bridge that connects MCP Clients (e.g: Claude Desktop or [5ire](https://github.com/nanbingxyz/5ire)) to the API server which allows executing commands on a Linux terminal.
 
 This allows the MCP to run terminal commands like `nmap`, `nxc` or any other tool, interact with web applications using tools like `curl`, `wget`, `gobuster`. 
 And perform **AI-assisted penetration testing**, solving **CTF web challenge** in real time, helping in **solving machines from HTB or THM**.
@@ -100,14 +100,14 @@ If you're running the client and server on the same machine:
 ./mcp_server.py --server http://127.0.0.1:5000
 ```
 
-If separate machines, create an ssh tunnel to your Kali MCP server, then launch the client:
+If separate machines, create an ssh tunnel to your MCP server, then launch the client:
 
 ```bash
 ssh -L 5000:localhost:5000 user@KALI_IP
 ./mcp_server.py --server http://127.0.0.1:5000
 ```
 
-NOTE: If you're openly hosting the Kali MCP server on your network (`kali_server --IP...`), you don't need the SSH tunnel ⚠️(this is highly discouraged)⚠️.
+NOTE: If you're openly hosting the MCP server on your network (`kali_server --IP...`), you don't need the SSH tunnel ⚠️(this is highly discouraged)⚠️.
 
 ```bash
 ./mcp_server.py --server http://LINUX_IP:5000
