@@ -310,7 +310,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/john", data)
 
-    @mcp.tool(name="wpscan_analyze" )
+    @mcp.tool(name="wpscan_analyze")
     def wpscan_analyze(url: str, additional_args: str = "") -> Dict[str, Any]:
         """
         Execute WPScan WordPress vulnerability scanner.
