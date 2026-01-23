@@ -3,7 +3,7 @@
     "mcp-kali-server": {
       "command": "python3",
         "args": [
-          "/absolute/path/to/mcp_server.py",
+          "/absolute/path/to/mks_client.py",
           "--server",
           "http://LINUX_IP:5000/"
         ],

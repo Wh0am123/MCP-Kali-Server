@@ -1,6 +1,6 @@
 # MCP Kali Server
 
-**MCP Kali Server** is a lightweight API bridge that connects [MCP clients](https://modelcontextprotocol.io/clients) (e.g: [Claude Desktop](https://code.claude.com/docs/en/desktop) or [5ire](https://github.com/nanbingxyz/5ire)) to the [API server](https://modelcontextprotocol.io/examples) which allows executing commands on a Linux terminal.
+**MCP Kali Server (MKS)** is a lightweight API bridge that connects [MCP clients](https://modelcontextprotocol.io/clients) (e.g: [Claude Desktop](https://code.claude.com/docs/en/desktop) or [5ire](https://github.com/nanbingxyz/5ire)) to the [API server](https://modelcontextprotocol.io/examples) which allows executing commands on a Linux terminal.
 
 This MCP is able to run terminal commands as well as interacting with web applications using:
 
@@ -73,7 +73,7 @@ cd MCP-Kali-Server
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 kali_server.py
+python3 mks_server.py
 ```
 
 **Command Line Options**:
@@ -89,16 +89,16 @@ python3 kali_server.py
 
 ```bash
 # Run on localhost only (secure, default)
-python3 kali_server.py
+python3 mks_server.py
 
 # Run on all interfaces (less secure, useful for remote access)
-python3 kali_server.py --ip 0.0.0.0
+python3 mks_server.py --ip 0.0.0.0
 
 # Run on a specific IP and custom port
-python3 kali_server.py --ip 192.168.1.100 --port 8080
+python3 mks_server.py --ip 192.168.1.100 --port 8080
 
 # Run with debug mode
-python3 kali_server.py --debug
+python3 mks_server.py --debug
 ```
 
 ### On your MCP client machine
@@ -114,7 +114,7 @@ mcp-server --server http://127.0.0.1:5000
 # ...OR...
 
 ## Bleeding edge
-./mcp_server.py --server http://127.0.0.1:5000
+./mks_client.py --server http://127.0.0.1:5000
 ```
 
 ---
@@ -131,16 +131,16 @@ cd MCP-Kali-Server
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-./mcp_server.py --server http://127.0.0.1:5000
+./mks_client.py --server http://127.0.0.1:5000
 ```
 
 ---
 
-If you're openly hosting the MCP Kali server on your network (`kali_server.py --IP...`), you don't need the SSH tunnel (but we do recommend it!)
+If you're openly hosting the MCP Kali server on your network (`mks_server.py --IP...`), you don't need the SSH tunnel (but we do recommend it!)
 NOTE: ⚠️(THIS IS STRONGLY DISCOURAGED. WE RECOMMEND SSH)⚠️.
 
 ```bash
-./mcp_server.py --server http://LINUX_IP:5000
+./mks_client.py --server http://LINUX_IP:5000
 ```
 
 #### Configuration for Claude Desktop:
@@ -154,7 +154,7 @@ Edit:
 
 #### Configuration for 5ire Desktop Application:
 
-- Simply add an MCP with the command `python3 /absolute/path/to/mcp_server.py http://LINUX_IP:5000` and it will automatically generate the needed configuration files.
+- Simply add an MCP with the command `python3 /absolute/path/to/mks_client.py http://LINUX_IP:5000` and it will automatically generate the needed configuration files.
 
 ## 🔮 Other Possibilities
 
