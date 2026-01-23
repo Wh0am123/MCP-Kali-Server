@@ -32,12 +32,12 @@ The goal is to enable AI-driven offensive security testing by:
 
 - Letting the MCP interact with AI endpoints like [OpenAI](https://openai.com/), [Claude](https://claude.ai/), [DeepSeek](https://www.deepseek.com/), [Ollama](https://docs.ollama.com/) or any other models.
 - Exposing an API to execute commands on a [Kali](https://www.kali.org/) machine.
-- Using AI to suggest and run terminal commands to [solve CTF challenges](#example-solving-my-web-ctf-challenge-in-ramadanctf) or automate recon/exploitation tasks.
+- Using AI to suggest and run terminal commands to [solve CTF challenges](#example-solving-a-web-ctf-challenge-from-ramadanctf) or automate recon/exploitation tasks.
 - Allowing MCP apps to send custom requests (e.g. `curl`, `nmap`, `ffuf`, etc.) and receive structured outputs.
 
 Here are some example (using Google's AI `gemini 2.0 flash`):
 
-### Example solving my web CTF challenge in RamadanCTF
+### Example solving a web CTF challenge from RamadanCTF
 
 https://github.com/user-attachments/assets/dc93b71d-9a4a-4ad5-8079-2c26c04e5397
 
