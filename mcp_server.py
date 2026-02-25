@@ -128,7 +128,7 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
     mcp = FastMCP("kali_mcp")
     
     @mcp.tool(name="nmap_scan")
-    def nmap_scan(target: str, scan_type: str = "-sV", ports: str = "", additional_args: str = "") -> Dict[str, Any]:
+    def nmap_scan(target: str, scan_type: str = "-sS", ports: str = "", additional_args: str = "") -> Dict[str, Any]:
         """
         Execute an Nmap scan against a target.
         
@@ -255,6 +255,8 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         username_file: str = "", 
         password: str = "", 
         password_file: str = "", 
+        path: str = "/login:username=^USER^&password=^PASS^:Invalid",
+        port: str = "",
         additional_args: str = ""
     ) -> Dict[str, Any]:
         """
@@ -266,7 +268,9 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
             username: Single username to try
             username_file: Path to username file
             password: Single password to try
-            password_file: Path to password file
+            password_file: Path to password file (for example /usr/share/wordlists/wifite.txt)
+            path: Service path/form string (for example /login:username=^USER^&password=^PASS^:Invalid)
+            port: Target service port (adds Hydra -s value)
             additional_args: Additional Hydra arguments
             
         Returns:
@@ -279,6 +283,8 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
             "username_file": username_file,
             "password": password,
             "password_file": password_file,
+            "path": path,
+            "port": port,
             "additional_args": additional_args
         }
         return kali_client.safe_post("api/tools/hydra", data)

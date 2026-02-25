@@ -5,15 +5,16 @@
 # some of the code here was inspired from https://github.com/whit3rabbit0/project_astro , be sure to check them out
 
 import argparse
-import json
 import logging
 import os
+import shlex
 import subprocess
 import sys
-import traceback
 import threading
-from typing import Dict, Any
-from flask import Flask, request, jsonify
+import traceback
+from typing import Any, Dict
+
+from flask import Flask, jsonify, request
 
 # Configure logging
 logging.basicConfig(
@@ -375,6 +376,7 @@ def metasploit():
 @app.route("/api/tools/hydra", methods=["POST"])
 def hydra():
     """Execute hydra with the provided parameters."""
+    """hydra -l admin -P /usr/share/wordlists/wifite.txt <TARGET-IP-ADDRESS> http-post-form /login:username=^USER^&password=^PASS^:Invalid -s <PORT>"""
     try:
         params = request.json
         target = params.get("target", "")
@@ -383,6 +385,8 @@ def hydra():
         username_file = params.get("username_file", "")
         password = params.get("password", "")
         password_file = params.get("password_file", "")
+        path = params.get("path", "")
+        port = params.get("port", "")
         additional_args = params.get("additional_args", "")
         
         if not target or not service:
@@ -396,20 +400,46 @@ def hydra():
             return jsonify({
                 "error": "Username/username_file and password/password_file are required"
             }), 400
+
+        service_value = str(service).strip().lower()
+        path_value = str(path).strip() if path is not None else ""
+        services_requiring_path = {
+            "http-post-form",
+            "http-get-form",
+            "https-post-form",
+            "https-get-form",
+        }
+        if service_value in services_requiring_path and not path_value:
+            logger.warning("Hydra called without path for form-based service")
+            return jsonify({
+                "error": (
+                    f"Path parameter is required for service '{service}'. "
+                    "Example: /login:username=^USER^&password=^PASS^:Invalid"
+                )
+            }), 400
         
-        command = f"hydra -t 4"
+        command = "hydra -t 4"
         
         if username:
-            command += f" -l {username}"
+            command += f" -l {shlex.quote(str(username))}"
         elif username_file:
-            command += f" -L {username_file}"
+            command += f" -L {shlex.quote(str(username_file))}"
         
         if password:
-            command += f" -p {password}"
+            command += f" -p {shlex.quote(str(password))}"
         elif password_file:
-            command += f" -P {password_file}"
+            command += f" -P {shlex.quote(str(password_file))}"
         
-        command += f" {target} {service}"
+        command += f" {shlex.quote(str(target))} {shlex.quote(str(service))}"
+
+        # For forms (e.g., http-post-form), path must come after service.
+        if path_value:
+            command += f" {shlex.quote(path_value)}"
+
+        # Keep -s after path to match Hydra argument order expectations.
+        port_value = str(port).strip() if port is not None else ""
+        if port_value:
+            command += f" -s {shlex.quote(port_value)}"
 
         if additional_args:
             command += f" {additional_args}"
@@ -439,7 +469,7 @@ def john():
                 "error": "Hash file parameter is required"
             }), 400
         
-        command = f"john"
+        command = "john"
         
         if format_type:
             command += f" --format={format_type}"
