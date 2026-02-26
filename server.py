@@ -351,7 +351,7 @@ def metasploit():
         resource_content += "exploit\n"
         
         # Save resource script to a temporary file
-        resource_file = "/tmp/mcp_msf_resource.rc"
+        resource_file = "/tmp/mks_msf_resource.rc"
         with open(resource_file, "w") as f:
             f.write(resource_content)
         
