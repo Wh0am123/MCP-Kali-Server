@@ -53,7 +53,7 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 - 🖥️ **Command Execution API**: Exposes a controlled API to execute terminal commands on your Kali Linux machine.
 - 🕸️ **Web Challenge Support**: AI can interact with websites and APIs, capture flags via `curl` and any other tool AI the needs.
 - 🔐 **Designed for Offensive Security Professionals**: Ideal for red teamers, bug bounty hunters, or CTF players automating common tasks.
-- 🔑 **API Key Authentication**: Optional API key support to prevent unauthorized access to the server.
+- 🔑 **API Key Authentication**: Mandatory API key to prevent unauthorized access. Auto-generated if not provided.
 
 ---
 
@@ -84,23 +84,19 @@ pip install -r requirements.txt
   - Use `0.0.0.0` to allow connections from any network interface (very dangerous; use with caution)
   - Use a specific IP address to bind to a particular network interface
 - `--port <port>`: Specify the port number (default: `5000`)
-- `--api-key <key>`: Set an API key to require authentication on all endpoints (recommended)
-- `--generate-api-key`: Auto-generate a random API key and print it at startup
+- `--api-key <key>`: Set the API key for authentication. If not provided (and `MKS_API_KEY` env var is not set), a secure random key is generated and printed at startup.
 - `--debug`: Enable debug mode for verbose logging
 
-You can also set the API key via the `MKS_API_KEY` environment variable (the `--api-key` flag takes priority).
+The server **always requires an API key**. You can provide one via `--api-key`, the `MKS_API_KEY` environment variable, or let the server auto-generate one at startup. The generated key is printed to the console — copy it and configure your MCP client with it.
 
 **Examples**:
 
 ```bash
-# Run on localhost only (secure, default)
+# Run with auto-generated API key (printed to console at startup)
 ./server.py
 
-# Run with API key authentication (recommended)
+# Run with a specific API key
 ./server.py --api-key YOUR_SECRET_KEY
-
-# Auto-generate a random API key
-./server.py --generate-api-key
 
 # Or use an environment variable
 export MKS_API_KEY="YOUR_SECRET_KEY"
@@ -132,7 +128,7 @@ kali-server-mcp --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
 ./client.py --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
 ```
 
-The `--api-key` must match the key configured on the server. You can also set `MKS_API_KEY` as an environment variable instead of passing it as a flag. If the server is running without an API key, you can omit it from the client.
+The `--api-key` must match the key configured on the server. If you let the server auto-generate a key, copy it from the server's startup output. You can also set `MKS_API_KEY` as an environment variable instead of passing it as a flag.
 
 ---
 

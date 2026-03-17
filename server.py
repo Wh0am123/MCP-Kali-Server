@@ -5,7 +5,6 @@
 # some of the code here was inspired from https://github.com/whit3rabbit0/project_astro , be sure to check them out
 
 import argparse
-import hashlib
 import hmac
 import json
 import logging
@@ -44,10 +43,6 @@ def require_api_key(f):
     """Decorator to enforce API key authentication on endpoints."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not API_KEY:
-            # No key configured — authentication disabled
-            return f(*args, **kwargs)
-
         provided_key = request.headers.get("X-API-Key", "")
         if not provided_key:
             logger.warning("Request rejected: missing X-API-Key header")
@@ -598,8 +593,7 @@ def parse_args():
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--port", type=int, default=API_PORT, help=f"Port for the API server (default: {API_PORT})")
     parser.add_argument("--ip", type=str, default="127.0.0.1", help="IP address to bind the server to (default: 127.0.0.1 for localhost only)")
-    parser.add_argument("--api-key", type=str, default="", help="API key for authentication (overrides MKS_API_KEY env var)")
-    parser.add_argument("--generate-api-key", action="store_true", help="Generate a random API key and start the server with it")
+    parser.add_argument("--api-key", type=str, default="", help="API key for authentication (overrides MKS_API_KEY env var). If not set, a random key is generated at startup.")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -614,19 +608,16 @@ if __name__ == "__main__":
     if args.port != API_PORT:
         API_PORT = args.port
 
-    # API key configuration (flag > env var)
-    if args.generate_api_key:
-        API_KEY = secrets.token_hex(32)
-        logger.info(f"Generated API key: {API_KEY}")
-        logger.info("Pass this key to the client with --api-key or set MKS_API_KEY")
-    elif args.api_key:
+    # API key configuration (flag > env var > auto-generate)
+    if args.api_key:
         API_KEY = args.api_key
         logger.info("API key authentication enabled (via --api-key)")
     elif API_KEY:
         logger.info("API key authentication enabled (via MKS_API_KEY env var)")
     else:
-        logger.warning("No API key configured. Server is running WITHOUT authentication.")
-        logger.warning("Set MKS_API_KEY or use --api-key / --generate-api-key to enable authentication.")
+        API_KEY = secrets.token_hex(32)
+        logger.info(f"Generated API key: {API_KEY}")
+        logger.info("Configure your MCP client with this key using --api-key or MKS_API_KEY")
 
     logger.info(f"Starting Kali Linux Tools API Server on {args.ip}:{API_PORT}")
     app.run(host=args.ip, port=API_PORT, debug=DEBUG_MODE)
