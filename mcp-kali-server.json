@@ -5,7 +5,10 @@
         "args": [
           "/absolute/path/to/client.py",
           "--server",
-          "http://LINUX_IP:5000/"
+          "https://LINUX_IP:5000/",
+          "--api-key",
+          "YOUR_API_KEY_HERE",
+          "--skip-verify"
         ],
         "description": "MCP Kali Server",
         "timeout": 300,
