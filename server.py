@@ -5,15 +5,19 @@
 # some of the code here was inspired from https://github.com/whit3rabbit0/project_astro , be sure to check them out
 
 import argparse
+import hashlib
+import hmac
 import json
 import logging
 import os
 import re
+import secrets
 import shlex
 import subprocess
 import sys
 import traceback
 import threading
+from functools import wraps
 from typing import Dict, Any
 from flask import Flask, request, jsonify
 
@@ -31,8 +35,31 @@ logger = logging.getLogger(__name__)
 API_PORT = int(os.environ.get("API_PORT", 5000))
 DEBUG_MODE = os.environ.get("DEBUG_MODE", "0").lower() in ("1", "true", "yes", "y")
 COMMAND_TIMEOUT = 180  # 5 minutes default timeout
+API_KEY = os.environ.get("MKS_API_KEY", "")
 
 app = Flask(__name__)
+
+
+def require_api_key(f):
+    """Decorator to enforce API key authentication on endpoints."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not API_KEY:
+            # No key configured — authentication disabled
+            return f(*args, **kwargs)
+
+        provided_key = request.headers.get("X-API-Key", "")
+        if not provided_key:
+            logger.warning("Request rejected: missing X-API-Key header")
+            return jsonify({"error": "Missing X-API-Key header"}), 401
+
+        # Constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(provided_key, API_KEY):
+            logger.warning("Request rejected: invalid API key")
+            return jsonify({"error": "Invalid API key"}), 403
+
+        return f(*args, **kwargs)
+    return decorated
 
 class CommandExecutor:
     """Class to handle command execution with better timeout management"""
@@ -145,6 +172,7 @@ def execute_command(command) -> Dict[str, Any]:
 
 
 @app.route("/api/command", methods=["POST"])
+@require_api_key
 def generic_command():
     """Execute any command provided in the request."""
     try:
@@ -168,6 +196,7 @@ def generic_command():
 
 
 @app.route("/api/tools/nmap", methods=["POST"])
+@require_api_key
 def nmap():
     """Execute nmap scan with the provided parameters."""
     try:
@@ -203,6 +232,7 @@ def nmap():
         }), 500
 
 @app.route("/api/tools/gobuster", methods=["POST"])
+@require_api_key
 def gobuster():
     """Execute gobuster with the provided parameters."""
     try:
@@ -240,6 +270,7 @@ def gobuster():
         }), 500
 
 @app.route("/api/tools/dirb", methods=["POST"])
+@require_api_key
 def dirb():
     """Execute dirb with the provided parameters."""
     try:
@@ -269,6 +300,7 @@ def dirb():
         }), 500
 
 @app.route("/api/tools/nikto", methods=["POST"])
+@require_api_key
 def nikto():
     """Execute nikto with the provided parameters."""
     try:
@@ -297,6 +329,7 @@ def nikto():
         }), 500
 
 @app.route("/api/tools/sqlmap", methods=["POST"])
+@require_api_key
 def sqlmap():
     """Execute sqlmap with the provided parameters."""
     try:
@@ -329,6 +362,7 @@ def sqlmap():
         }), 500
 
 @app.route("/api/tools/metasploit", methods=["POST"])
+@require_api_key
 def metasploit():
     """Execute metasploit module with the provided parameters."""
     try:
@@ -378,6 +412,7 @@ def metasploit():
         }), 500
 
 @app.route("/api/tools/hydra", methods=["POST"])
+@require_api_key
 def hydra():
     """Execute hydra with the provided parameters."""
     try:
@@ -429,6 +464,7 @@ def hydra():
         }), 500
 
 @app.route("/api/tools/john", methods=["POST"])
+@require_api_key
 def john():
     """Execute john with the provided parameters."""
     try:
@@ -467,6 +503,7 @@ def john():
         }), 500
 
 @app.route("/api/tools/wpscan", methods=["POST"])
+@require_api_key
 def wpscan():
     """Execute wpscan with the provided parameters."""
     try:
@@ -495,6 +532,7 @@ def wpscan():
         }), 500
 
 @app.route("/api/tools/enum4linux", methods=["POST"])
+@require_api_key
 def enum4linux():
     """Execute enum4linux with the provided parameters."""
     try:
@@ -560,19 +598,35 @@ def parse_args():
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--port", type=int, default=API_PORT, help=f"Port for the API server (default: {API_PORT})")
     parser.add_argument("--ip", type=str, default="127.0.0.1", help="IP address to bind the server to (default: 127.0.0.1 for localhost only)")
+    parser.add_argument("--api-key", type=str, default="", help="API key for authentication (overrides MKS_API_KEY env var)")
+    parser.add_argument("--generate-api-key", action="store_true", help="Generate a random API key and start the server with it")
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
-    
+
     # Set configuration from command line arguments
     if args.debug:
         DEBUG_MODE = True
         os.environ["DEBUG_MODE"] = "1"
         logger.setLevel(logging.DEBUG)
-    
+
     if args.port != API_PORT:
         API_PORT = args.port
-    
+
+    # API key configuration (flag > env var)
+    if args.generate_api_key:
+        API_KEY = secrets.token_hex(32)
+        logger.info(f"Generated API key: {API_KEY}")
+        logger.info("Pass this key to the client with --api-key or set MKS_API_KEY")
+    elif args.api_key:
+        API_KEY = args.api_key
+        logger.info("API key authentication enabled (via --api-key)")
+    elif API_KEY:
+        logger.info("API key authentication enabled (via MKS_API_KEY env var)")
+    else:
+        logger.warning("No API key configured. Server is running WITHOUT authentication.")
+        logger.warning("Set MKS_API_KEY or use --api-key / --generate-api-key to enable authentication.")
+
     logger.info(f"Starting Kali Linux Tools API Server on {args.ip}:{API_PORT}")
     app.run(host=args.ip, port=API_PORT, debug=DEBUG_MODE)

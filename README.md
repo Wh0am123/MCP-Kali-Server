@@ -53,6 +53,7 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 - 🖥️ **Command Execution API**: Exposes a controlled API to execute terminal commands on your Kali Linux machine.
 - 🕸️ **Web Challenge Support**: AI can interact with websites and APIs, capture flags via `curl` and any other tool AI the needs.
 - 🔐 **Designed for Offensive Security Professionals**: Ideal for red teamers, bug bounty hunters, or CTF players automating common tasks.
+- 🔑 **API Key Authentication**: Optional API key support to prevent unauthorized access to the server.
 
 ---
 
@@ -83,7 +84,11 @@ pip install -r requirements.txt
   - Use `0.0.0.0` to allow connections from any network interface (very dangerous; use with caution)
   - Use a specific IP address to bind to a particular network interface
 - `--port <port>`: Specify the port number (default: `5000`)
+- `--api-key <key>`: Set an API key to require authentication on all endpoints (recommended)
+- `--generate-api-key`: Auto-generate a random API key and print it at startup
 - `--debug`: Enable debug mode for verbose logging
+
+You can also set the API key via the `MKS_API_KEY` environment variable (the `--api-key` flag takes priority).
 
 **Examples**:
 
@@ -91,8 +96,18 @@ pip install -r requirements.txt
 # Run on localhost only (secure, default)
 ./server.py
 
+# Run with API key authentication (recommended)
+./server.py --api-key YOUR_SECRET_KEY
+
+# Auto-generate a random API key
+./server.py --generate-api-key
+
+# Or use an environment variable
+export MKS_API_KEY="YOUR_SECRET_KEY"
+./server.py
+
 # Run on all interfaces (less secure, useful for remote access)
-./server.py --ip 0.0.0.0
+./server.py --ip 0.0.0.0 --api-key YOUR_SECRET_KEY
 
 # Run on a specific IP and custom port
 ./server.py --ip 192.168.1.100 --port 8080
@@ -109,13 +124,15 @@ If you're running the client and server on the same _Kali_ machine (aka local), 
 
 ```bash
 ## OS package
-kali-server-mcp --server http://127.0.0.1:5000
+kali-server-mcp --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
 
 # ...OR...
 
 ## Bleeding edge
-./client.py --server http://127.0.0.1:5000
+./client.py --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
 ```
+
+The `--api-key` must match the key configured on the server. You can also set `MKS_API_KEY` as an environment variable instead of passing it as a flag. If the server is running without an API key, you can omit it from the client.
 
 ---
 
@@ -131,7 +148,7 @@ cd MCP-Kali-Server
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-./client.py --server http://127.0.0.1:5000
+./client.py --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
 ```
 
 ---
@@ -140,7 +157,7 @@ If you're openly hosting the MCP Kali server on your network (`server.py --IP...
 NOTE: ⚠️(THIS IS STRONGLY DISCOURAGED. WE RECOMMEND SSH)⚠️.
 
 ```bash
-./client.py --server http://LINUX_IP:5000
+./client.py --server http://LINUX_IP:5000 --api-key YOUR_SECRET_KEY
 ```
 
 #### Configuration for Claude Desktop:
@@ -154,7 +171,7 @@ Edit:
 
 #### Configuration for 5ire Desktop Application:
 
-- Simply add an MCP with the command `python3 /absolute/path/to/client.py --server http://LINUX_IP:5000` and it will automatically generate the needed configuration files.
+- Simply add an MCP with the command `python3 /absolute/path/to/client.py --server http://LINUX_IP:5000 --api-key YOUR_SECRET_KEY` and it will automatically generate the needed configuration files.
 
 ## 🔮 Other Possibilities
 
