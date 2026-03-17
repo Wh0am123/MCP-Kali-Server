@@ -24,13 +24,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Default configuration
-DEFAULT_KALI_SERVER = "http://localhost:5000" # change to your linux IP
+DEFAULT_KALI_SERVER = "https://localhost:5000" # change to your linux IP
 DEFAULT_REQUEST_TIMEOUT = 300  # 5 minutes default timeout for API requests
 
 class KaliToolsClient:
     """Client for communicating with the Kali Linux Tools API Server"""
 
-    def __init__(self, server_url: str, timeout: int = DEFAULT_REQUEST_TIMEOUT, api_key: str = ""):
+    def __init__(self, server_url: str, timeout: int = DEFAULT_REQUEST_TIMEOUT, api_key: str = "", verify_ssl: bool = True):
         """
         Initialize the Kali Tools Client
 
@@ -38,13 +38,19 @@ class KaliToolsClient:
             server_url: URL of the Kali Tools API Server
             timeout: Request timeout in seconds
             api_key: API key for server authentication
+            verify_ssl: Whether to verify TLS certificates (set False for self-signed)
         """
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
+        self.verify_ssl = verify_ssl
         self.headers = {}
         if api_key:
             self.headers["X-API-Key"] = api_key
             logger.info("API key authentication enabled")
+        if not verify_ssl:
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            logger.info("TLS certificate verification disabled (self-signed cert)")
         logger.info(f"Initialized Kali Tools Client connecting to {server_url}")
         
     def safe_get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -65,7 +71,7 @@ class KaliToolsClient:
 
         try:
             logger.debug(f"GET {url} with params: {params}")
-            response = requests.get(url, params=params, headers=self.headers, timeout=self.timeout)
+            response = requests.get(url, params=params, headers=self.headers, timeout=self.timeout, verify=self.verify_ssl)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -90,7 +96,7 @@ class KaliToolsClient:
         
         try:
             logger.debug(f"POST {url} with data: {json_data}")
-            response = requests.post(url, json=json_data, headers=self.headers, timeout=self.timeout)
+            response = requests.post(url, json=json_data, headers=self.headers, timeout=self.timeout, verify=self.verify_ssl)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -416,6 +422,8 @@ def parse_args():
                       help=f"Request timeout in seconds (default: {DEFAULT_REQUEST_TIMEOUT})")
     parser.add_argument("--api-key", type=str, default=os.environ.get("MKS_API_KEY", ""),
                       help="API key for server authentication (default: MKS_API_KEY env var)")
+    parser.add_argument("--skip-verify", action="store_true",
+                      help="Skip TLS certificate verification (use with self-signed certs)")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     return parser.parse_args()
 
@@ -429,7 +437,8 @@ def main():
         logger.debug("Debug logging enabled")
     
     # Initialize the Kali Tools client
-    kali_client = KaliToolsClient(args.server, args.timeout, args.api_key)
+    verify_ssl = not args.skip_verify
+    kali_client = KaliToolsClient(args.server, args.timeout, args.api_key, verify_ssl)
     
     # Check server health and log the result
     health = kali_client.check_health()

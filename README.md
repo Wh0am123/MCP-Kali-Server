@@ -54,6 +54,7 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 - 🕸️ **Web Challenge Support**: AI can interact with websites and APIs, capture flags via `curl` and any other tool AI the needs.
 - 🔐 **Designed for Offensive Security Professionals**: Ideal for red teamers, bug bounty hunters, or CTF players automating common tasks.
 - 🔑 **API Key Authentication**: Mandatory API key to prevent unauthorized access. Auto-generated if not provided.
+- 🔒 **TLS Encryption by Default**: All communication is encrypted over HTTPS with auto-generated self-signed RSA 4096 certificates.
 
 ---
 
@@ -85,14 +86,16 @@ pip install -r requirements.txt
   - Use a specific IP address to bind to a particular network interface
 - `--port <port>`: Specify the port number (default: `5000`)
 - `--api-key <key>`: Set the API key for authentication. If not provided (and `MKS_API_KEY` env var is not set), a secure random key is generated and printed at startup.
+- `--insecure-http`: Disable TLS and run over plain HTTP. Only use for local-only servers where efficiency matters more than security.
+- `--cert <path>` / `--key <path>`: Use your own TLS certificate and key instead of auto-generated ones.
 - `--debug`: Enable debug mode for verbose logging
 
-The server **always requires an API key**. You can provide one via `--api-key`, the `MKS_API_KEY` environment variable, or let the server auto-generate one at startup. The generated key is printed to the console — copy it and configure your MCP client with it.
+The server **always requires an API key** and **runs over HTTPS by default**. On first run, a self-signed RSA 4096 certificate is auto-generated and stored in `~/.mcp-kali-server/certs/`. The API key can be provided via `--api-key`, the `MKS_API_KEY` environment variable, or auto-generated at startup (printed to the console).
 
 **Examples**:
 
 ```bash
-# Run with auto-generated API key (printed to console at startup)
+# Run with HTTPS + auto-generated API key (default, recommended)
 ./server.py
 
 # Run with a specific API key
@@ -101,6 +104,12 @@ The server **always requires an API key**. You can provide one via `--api-key`, 
 # Or use an environment variable
 export MKS_API_KEY="YOUR_SECRET_KEY"
 ./server.py
+
+# Use your own TLS certificate
+./server.py --cert /path/to/cert.crt --key /path/to/cert.key
+
+# Run over plain HTTP (local-only, not recommended)
+./server.py --insecure-http
 
 # Run on all interfaces (less secure, useful for remote access)
 ./server.py --ip 0.0.0.0 --api-key YOUR_SECRET_KEY
@@ -120,15 +129,17 @@ If you're running the client and server on the same _Kali_ machine (aka local), 
 
 ```bash
 ## OS package
-kali-server-mcp --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
+kali-server-mcp --server https://127.0.0.1:5000 --api-key YOUR_SECRET_KEY --skip-verify
 
 # ...OR...
 
 ## Bleeding edge
-./client.py --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
+./client.py --server https://127.0.0.1:5000 --api-key YOUR_SECRET_KEY --skip-verify
 ```
 
 The `--api-key` must match the key configured on the server. If you let the server auto-generate a key, copy it from the server's startup output. You can also set `MKS_API_KEY` as an environment variable instead of passing it as a flag.
+
+Use `--skip-verify` when the server uses a self-signed certificate (the default). If the server is running with `--insecure-http`, use `http://` in the URL instead.
 
 ---
 
@@ -144,7 +155,7 @@ cd MCP-Kali-Server
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-./client.py --server http://127.0.0.1:5000 --api-key YOUR_SECRET_KEY
+./client.py --server https://127.0.0.1:5000 --api-key YOUR_SECRET_KEY --skip-verify
 ```
 
 ---
@@ -153,7 +164,7 @@ If you're openly hosting the MCP Kali server on your network (`server.py --IP...
 NOTE: ⚠️(THIS IS STRONGLY DISCOURAGED. WE RECOMMEND SSH)⚠️.
 
 ```bash
-./client.py --server http://LINUX_IP:5000 --api-key YOUR_SECRET_KEY
+./client.py --server https://LINUX_IP:5000 --api-key YOUR_SECRET_KEY --skip-verify
 ```
 
 #### Configuration for Claude Desktop:
@@ -167,7 +178,7 @@ Edit:
 
 #### Configuration for 5ire Desktop Application:
 
-- Simply add an MCP with the command `python3 /absolute/path/to/client.py --server http://LINUX_IP:5000 --api-key YOUR_SECRET_KEY` and it will automatically generate the needed configuration files.
+- Simply add an MCP with the command `python3 /absolute/path/to/client.py --server https://LINUX_IP:5000 --api-key YOUR_SECRET_KEY --skip-verify` and it will automatically generate the needed configuration files.
 
 ## 🔮 Other Possibilities
 

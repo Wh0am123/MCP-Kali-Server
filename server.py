@@ -12,11 +12,13 @@ import os
 import re
 import secrets
 import shlex
+import ssl
 import subprocess
 import sys
 import traceback
 import threading
 from functools import wraps
+from pathlib import Path
 from typing import Dict, Any
 from flask import Flask, request, jsonify
 
@@ -35,8 +37,44 @@ API_PORT = int(os.environ.get("API_PORT", 5000))
 DEBUG_MODE = os.environ.get("DEBUG_MODE", "0").lower() in ("1", "true", "yes", "y")
 COMMAND_TIMEOUT = 180  # 5 minutes default timeout
 API_KEY = os.environ.get("MKS_API_KEY", "")
+CERT_DIR = Path.home() / ".mcp-kali-server" / "certs"
 
 app = Flask(__name__)
+
+
+def generate_self_signed_cert():
+    """Generate a self-signed RSA 4096 certificate if one doesn't already exist."""
+    cert_file = CERT_DIR / "server.crt"
+    key_file = CERT_DIR / "server.key"
+
+    if cert_file.exists() and key_file.exists():
+        logger.info(f"Using existing TLS certificate from {CERT_DIR}")
+        return str(cert_file), str(key_file)
+
+    CERT_DIR.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Generating self-signed RSA 4096 TLS certificate (first run)...")
+    try:
+        subprocess.run([
+            "openssl", "req", "-x509", "-newkey", "rsa:4096",
+            "-keyout", str(key_file),
+            "-out", str(cert_file),
+            "-days", "365",
+            "-nodes",
+            "-subj", "/CN=mcp-kali-server"
+        ], check=True, capture_output=True, text=True)
+    except FileNotFoundError:
+        logger.error("openssl not found. Install it with: sudo apt install openssl")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to generate TLS certificate: {e.stderr}")
+        sys.exit(1)
+
+    # Restrict key file permissions
+    key_file.chmod(0o600)
+
+    logger.info(f"TLS certificate generated at {CERT_DIR}")
+    return str(cert_file), str(key_file)
 
 
 def require_api_key(f):
@@ -594,6 +632,9 @@ def parse_args():
     parser.add_argument("--port", type=int, default=API_PORT, help=f"Port for the API server (default: {API_PORT})")
     parser.add_argument("--ip", type=str, default="127.0.0.1", help="IP address to bind the server to (default: 127.0.0.1 for localhost only)")
     parser.add_argument("--api-key", type=str, default="", help="API key for authentication (overrides MKS_API_KEY env var). If not set, a random key is generated at startup.")
+    parser.add_argument("--insecure-http", action="store_true", help="Disable TLS and run over plain HTTP. Only use for local-only servers where efficiency matters.")
+    parser.add_argument("--cert", type=str, default="", help="Path to custom TLS certificate file")
+    parser.add_argument("--key", type=str, default="", help="Path to custom TLS private key file")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -619,5 +660,25 @@ if __name__ == "__main__":
         logger.info(f"Generated API key: {API_KEY}")
         logger.info("Configure your MCP client with this key using --api-key or MKS_API_KEY")
 
-    logger.info(f"Starting Kali Linux Tools API Server on {args.ip}:{API_PORT}")
-    app.run(host=args.ip, port=API_PORT, debug=DEBUG_MODE)
+    # TLS configuration
+    ssl_context = None
+    if args.insecure_http:
+        logger.warning("=" * 60)
+        logger.warning("WARNING: Running over plain HTTP (--insecure-http)")
+        logger.warning("API keys and all traffic are sent UNENCRYPTED.")
+        logger.warning("Only use this for local-only servers (127.0.0.1)")
+        logger.warning("where efficiency is more important than security.")
+        logger.warning("=" * 60)
+        protocol = "http"
+    else:
+        if args.cert and args.key:
+            cert_file, key_file = args.cert, args.key
+            logger.info(f"Using custom TLS certificate: {cert_file}")
+        else:
+            cert_file, key_file = generate_self_signed_cert()
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(cert_file, key_file)
+        protocol = "https"
+
+    logger.info(f"Starting Kali Linux Tools API Server on {protocol}://{args.ip}:{API_PORT}")
+    app.run(host=args.ip, port=API_PORT, debug=DEBUG_MODE, ssl_context=ssl_context)
