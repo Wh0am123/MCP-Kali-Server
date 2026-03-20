@@ -62,7 +62,7 @@ https://github.com/user-attachments/assets/3ec06ff8-0bdf-4ad5-be71-2ec490b7ee27
 
 ```bash
 sudo apt install mcp-kali-server
-kali-server
+kali-server-mcp
 ```
 
 Otherwise for **bleeding edge**:
@@ -109,7 +109,7 @@ If you're running the client and server on the same _Kali_ machine (aka local), 
 
 ```bash
 ## OS package
-mcp-server --server http://127.0.0.1:5000
+kali-server-mcp --server http://127.0.0.1:5000
 
 # ...OR...
 

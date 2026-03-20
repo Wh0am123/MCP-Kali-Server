@@ -7,6 +7,7 @@
 import argparse
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -35,10 +36,12 @@ app = Flask(__name__)
 
 class CommandExecutor:
     """Class to handle command execution with better timeout management"""
-    
-    def __init__(self, command: str, timeout: int = COMMAND_TIMEOUT):
+
+    def __init__(self, command, timeout: int = COMMAND_TIMEOUT):
         self.command = command
         self.timeout = timeout
+        # Determine if we should use shell mode based on command type
+        self.use_shell = isinstance(command, str)
         self.process = None
         self.stdout_data = ""
         self.stderr_data = ""
@@ -64,7 +67,7 @@ class CommandExecutor:
         try:
             self.process = subprocess.Popen(
                 self.command,
-                shell=True,
+                shell=self.use_shell,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -127,13 +130,13 @@ class CommandExecutor:
             }
 
 
-def execute_command(command: str) -> Dict[str, Any]:
+def execute_command(command) -> Dict[str, Any]:
     """
-    Execute a shell command and return the result
-    
+    Execute a command and return the result.
+
     Args:
-        command: The command to execute
-        
+        command: The command to execute (list for safe mode, string for shell mode)
+
     Returns:
         A dictionary containing the stdout, stderr, and return code
     """
@@ -180,16 +183,15 @@ def nmap():
                 "error": "Target parameter is required"
             }), 400        
         
-        command = f"nmap {scan_type}"
-        
+        command = ["nmap"] + shlex.split(scan_type)
+
         if ports:
-            command += f" -p {ports}"
-        
+            command += ["-p", ports]
+
         if additional_args:
-            # Basic validation for additional args - more sophisticated validation would be better
-            command += f" {additional_args}"
-        
-        command += f" {target}"
+            command += shlex.split(additional_args)
+
+        command.append(target)
         
         result = execute_command(command)
         return jsonify(result)
@@ -223,10 +225,10 @@ def gobuster():
                 "error": f"Invalid mode: {mode}. Must be one of: dir, dns, fuzz, vhost"
             }), 400
         
-        command = f"gobuster {mode} -u {url} -w {wordlist}"
-        
+        command = ["gobuster", mode, "-u", url, "-w", wordlist]
+
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -252,10 +254,10 @@ def dirb():
                 "error": "URL parameter is required"
             }), 400
         
-        command = f"dirb {url} {wordlist}"
-        
+        command = ["dirb", url, wordlist]
+
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -280,10 +282,10 @@ def nikto():
                 "error": "Target parameter is required"
             }), 400
         
-        command = f"nikto -h {target}"
-        
+        command = ["nikto", "-h", target]
+
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -309,13 +311,13 @@ def sqlmap():
                 "error": "URL parameter is required"
             }), 400
         
-        command = f"sqlmap -u {url} --batch"
-        
+        command = ["sqlmap", "-u", url, "--batch"]
+
         if data:
-            command += f" --data=\"{data}\""
-        
+            command += ["--data", data]
+
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -340,23 +342,25 @@ def metasploit():
                 "error": "Module parameter is required"
             }), 400
         
-        # Format options for Metasploit
-        options_str = ""
-        for key, value in options.items():
-            options_str += f" {key}={value}"
-        
-        # Create an MSF resource script
+        # Validate module name (allow only alphanumeric, slashes, underscores, hyphens)
+        if not re.match(r'^[a-zA-Z0-9/_-]+$', module):
+            return jsonify({"error": "Invalid module name"}), 400
+
+        # Create an MSF resource script with validated options
         resource_content = f"use {module}\n"
         for key, value in options.items():
+            # Validate option keys
+            if not re.match(r'^[a-zA-Z0-9_]+$', str(key)):
+                return jsonify({"error": f"Invalid option key: {key}"}), 400
             resource_content += f"set {key} {value}\n"
         resource_content += "exploit\n"
-        
+
         # Save resource script to a temporary file
         resource_file = "/tmp/mks_msf_resource.rc"
         with open(resource_file, "w") as f:
             f.write(resource_content)
-        
-        command = f"msfconsole -q -r {resource_file}"
+
+        command = ["msfconsole", "-q", "-r", resource_file]
         result = execute_command(command)
         
         # Clean up the temporary file
@@ -442,7 +446,7 @@ def hydra():
             command += f" -s {shlex.quote(port_value)}"
 
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -469,18 +473,18 @@ def john():
                 "error": "Hash file parameter is required"
             }), 400
         
-        command = "john"
-        
+        command = ["john"]
+
         if format_type:
-            command += f" --format={format_type}"
-        
+            command.append(f"--format={format_type}")
+
         if wordlist:
-            command += f" --wordlist={wordlist}"
-        
+            command.append(f"--wordlist={wordlist}")
+
         if additional_args:
-            command += f" {additional_args}"
-        
-        command += f" {hash_file}"
+            command += shlex.split(additional_args)
+
+        command.append(hash_file)
         
         result = execute_command(command)
         return jsonify(result)
@@ -505,10 +509,10 @@ def wpscan():
                 "error": "URL parameter is required"
             }), 400
         
-        command = f"wpscan --url {url}"
-        
+        command = ["wpscan", "--url", url]
+
         if additional_args:
-            command += f" {additional_args}"
+            command += shlex.split(additional_args)
         
         result = execute_command(command)
         return jsonify(result)
@@ -533,7 +537,7 @@ def enum4linux():
                 "error": "Target parameter is required"
             }), 400
         
-        command = f"enum4linux {additional_args} {target}"
+        command = ["enum4linux"] + shlex.split(additional_args) + [target]
         
         result = execute_command(command)
         return jsonify(result)
@@ -555,7 +559,7 @@ def health_check():
     
     for tool in essential_tools:
         try:
-            result = execute_command(f"which {tool}")
+            result = execute_command(["which", tool])
             tools_status[tool] = result["success"]
         except:
             tools_status[tool] = False
