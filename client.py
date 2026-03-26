@@ -376,6 +376,45 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/enum4linux", data)
 
+    @mcp.tool(name="tshark_capture")
+    def tshark_capture(
+        interface: str = "",
+        capture_filter: str = "",
+        display_filter: str = "",
+        packet_count: str = "",
+        duration: str = "",
+        read_file: str = "",
+        output_fields: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute TShark network packet capture and analysis tool.
+        
+        Args:
+            interface: Network interface to capture on (e.g., eth0, wlan0)
+            capture_filter: BPF capture filter (e.g., "tcp port 80")
+            display_filter: Wireshark display filter (e.g., "http.request")
+            packet_count: Number of packets to capture before stopping
+            duration: Capture duration in seconds
+            read_file: Path to a pcap file to read and analyze instead of live capture
+            output_fields: Comma-separated list of fields to output (e.g., "ip.src,ip.dst,tcp.port")
+            additional_args: Additional TShark arguments
+            
+        Returns:
+            Capture/analysis results
+        """
+        data = {
+            "interface": interface,
+            "capture_filter": capture_filter,
+            "display_filter": display_filter,
+            "packet_count": packet_count,
+            "duration": duration,
+            "read_file": read_file,
+            "output_fields": output_fields,
+            "additional_args": additional_args
+        }
+        return kali_client.safe_post("api/tools/tshark", data)
+
     @mcp.tool(name="server_health")
     def server_health() -> Dict[str, Any]:
         """
