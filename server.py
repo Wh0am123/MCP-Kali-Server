@@ -519,6 +519,56 @@ def enum4linux():
             "error": f"Server error: {str(e)}"
         }), 500
 
+@app.route("/api/tools/tshark", methods=["POST"])
+def tshark():
+    """Execute tshark with the provided parameters."""
+    try:
+        params = request.json
+        interface = params.get("interface", "")
+        capture_filter = params.get("capture_filter", "")
+        display_filter = params.get("display_filter", "")
+        packet_count = params.get("packet_count", "")
+        duration = params.get("duration", "")
+        read_file = params.get("read_file", "")
+        output_fields = params.get("output_fields", "")
+        additional_args = params.get("additional_args", "")
+
+        command = ["tshark"]
+
+        if read_file:
+            command += ["-r", read_file]
+        elif interface:
+            command += ["-i", interface]
+
+        if capture_filter:
+            command += ["-f", capture_filter]
+
+        if display_filter:
+            command += ["-Y", display_filter]
+
+        if packet_count:
+            command += ["-c", str(packet_count)]
+
+        if duration:
+            command += ["-a", f"duration:{duration}"]
+
+        if output_fields:
+            command += ["-T", "fields"]
+            for field in output_fields.split(","):
+                command += ["-e", field.strip()]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in tshark endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
 
 # Health check endpoint
 @app.route("/health", methods=["GET"])
