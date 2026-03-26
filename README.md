@@ -11,6 +11,7 @@ This MCP is able to run terminal commands as well as interacting with web applic
 - `John the Ripper`
 - `Metasploit-Framework`
 - `Nikto`
+- `Tshark`
 - `Nmap`
 - `sqlmap`
 - `WPScan`
