@@ -530,7 +530,7 @@ def health_check():
     
     for tool in essential_tools:
         try:
-            result = execute_command(["which", tool])
+            result = execute_command(f"which {tool}")
             tools_status[tool] = result["success"]
         except:
             tools_status[tool] = False
