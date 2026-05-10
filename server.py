@@ -140,6 +140,9 @@ def execute_command(command) -> Dict[str, Any]:
     Returns:
         A dictionary containing the stdout, stderr, and return code
     """
+    if isinstance(command, list):
+        command = " ".join(shlex.quote(c) for c in command)
+
     executor = CommandExecutor(command)
     return executor.execute()
 
