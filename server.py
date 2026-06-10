@@ -520,6 +520,467 @@ def enum4linux():
         }), 500
 
 
+@app.route("/api/tools/medusa", methods=["POST"])
+def medusa():
+    """Execute medusa password cracker with the provided parameters."""
+    try:
+        params = request.json
+        target = params.get("target", "")
+        service = params.get("service", "")
+        username = params.get("username", "")
+        username_file = params.get("username_file", "")
+        password = params.get("password", "")
+        password_file = params.get("password_file", "")
+        additional_args = params.get("additional_args", "")
+
+        if not target or not service:
+            logger.warning("Medusa called without target or service parameter")
+            return jsonify({"error": "Target and service parameters are required"}), 400
+
+        if not (username or username_file) or not (password or password_file):
+            logger.warning("Medusa called without username/password parameters")
+            return jsonify({"error": "Username/username_file and password/password_file are required"}), 400
+
+        command = ["medusa", "-t", "4", "-h", target, "-M", service]
+
+        if username:
+            command += ["-u", username]
+        elif username_file:
+            command += ["-U", username_file]
+
+        if password:
+            command += ["-p", password]
+        elif password_file:
+            command += ["-P", password_file]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in medusa endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/wapiti", methods=["POST"])
+def wapiti():
+    """Execute wapiti web vulnerability scanner."""
+    try:
+        params = request.json
+        url = params.get("url", "")
+        additional_args = params.get("additional_args", "")
+
+        if not url:
+            logger.warning("Wapiti called without URL parameter")
+            return jsonify({"error": "URL parameter is required"}), 400
+
+        command = ["wapiti", "-u", url]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in wapiti endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/joomscan", methods=["POST"])
+def joomscan():
+    """Execute joomscan Joomla vulnerability scanner."""
+    try:
+        params = request.json
+        url = params.get("url", "")
+        additional_args = params.get("additional_args", "")
+
+        if not url:
+            logger.warning("JoomScan called without URL parameter")
+            return jsonify({"error": "URL parameter is required"}), 400
+
+        command = ["joomscan", "--url", url]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in joomscan endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/sqlninja", methods=["POST"])
+def sqlninja():
+    """Execute sqlninja SQL Server injection tool."""
+    try:
+        params = request.json
+        mode = params.get("mode", "t")
+        config_file = params.get("config_file", "")
+        additional_args = params.get("additional_args", "")
+
+        valid_modes = ["t", "f", "b", "e", "x", "k", "s", "d", "i"]
+        if mode not in valid_modes:
+            return jsonify({"error": f"Invalid mode: {mode}. Must be one of: {', '.join(valid_modes)}"}), 400
+
+        command = ["sqlninja", "-m", mode]
+
+        if config_file:
+            command += ["-f", config_file]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in sqlninja endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/smtp-user-enum", methods=["POST"])
+def smtp_user_enum():
+    """Execute smtp-user-enum SMTP user enumeration tool."""
+    try:
+        params = request.json
+        target = params.get("target", "")
+        method = params.get("method", "VRFY")
+        username = params.get("username", "")
+        userlist = params.get("userlist", "")
+        port = params.get("port", 25)
+        additional_args = params.get("additional_args", "")
+
+        if not target:
+            logger.warning("smtp-user-enum called without target parameter")
+            return jsonify({"error": "Target parameter is required"}), 400
+
+        if not (username or userlist):
+            logger.warning("smtp-user-enum called without username or userlist parameter")
+            return jsonify({"error": "Username or userlist parameter is required"}), 400
+
+        if method not in ["VRFY", "EXPN", "RCPT"]:
+            return jsonify({"error": f"Invalid method: {method}. Must be one of: VRFY, EXPN, RCPT"}), 400
+
+        command = ["smtp-user-enum", "-M", method, "-t", target, "-p", str(port)]
+
+        if username:
+            command += ["-u", username]
+        elif userlist:
+            command += ["-U", userlist]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in smtp-user-enum endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/xsser", methods=["POST"])
+def xsser():
+    """Execute xsser XSS vulnerability scanner."""
+    try:
+        params = request.json
+        url = params.get("url", "")
+        additional_args = params.get("additional_args", "")
+
+        if not url:
+            logger.warning("XSSer called without URL parameter")
+            return jsonify({"error": "URL parameter is required"}), 400
+
+        command = ["xsser", "-u", url]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in xsser endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/unicornscan", methods=["POST"])
+def unicornscan():
+    """Execute unicornscan asynchronous port scanner."""
+    try:
+        params = request.json
+        target = params.get("target", "")
+        ports = params.get("ports", "")
+        additional_args = params.get("additional_args", "")
+
+        if not target:
+            logger.warning("Unicornscan called without target parameter")
+            return jsonify({"error": "Target parameter is required"}), 400
+
+        target_spec = f"{target}:{ports}" if ports else target
+        command = ["unicornscan", target_spec]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in unicornscan endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/dnsmap", methods=["POST"])
+def dnsmap():
+    """Execute dnsmap DNS subdomain brute-force tool."""
+    try:
+        params = request.json
+        domain = params.get("domain", "")
+        wordlist = params.get("wordlist", "")
+        additional_args = params.get("additional_args", "")
+
+        if not domain:
+            logger.warning("dnsmap called without domain parameter")
+            return jsonify({"error": "Domain parameter is required"}), 400
+
+        command = ["dnsmap", domain]
+
+        if wordlist:
+            command += ["-w", wordlist]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in dnsmap endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/cloud-enum", methods=["POST"])
+def cloud_enum():
+    """Execute cloud_enum cloud storage and service enumeration tool."""
+    try:
+        params = request.json
+        keywords = params.get("keywords", "")
+        additional_args = params.get("additional_args", "")
+
+        if not keywords:
+            logger.warning("cloud-enum called without keywords parameter")
+            return jsonify({"error": "Keywords parameter is required"}), 400
+
+        command = ["cloud_enum"]
+        for kw in re.split(r'[,\s]+', keywords):
+            if kw:
+                command += ["-k", kw]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in cloud-enum endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/padbuster", methods=["POST"])
+def padbuster():
+    """Execute padbuster padding oracle attack tool."""
+    try:
+        params = request.json
+        url = params.get("url", "")
+        sample = params.get("sample", "")
+        block_size = params.get("block_size", 8)
+        additional_args = params.get("additional_args", "")
+
+        if not url or not sample:
+            logger.warning("padbuster called without url or sample parameter")
+            return jsonify({"error": "URL and sample parameters are required"}), 400
+
+        command = ["padbuster", url, sample, str(block_size)]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in padbuster endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/sipvicious", methods=["POST"])
+def sipvicious():
+    """Execute SIPVicious SIP scanning tools (svmap, svwar, svcrack)."""
+    try:
+        params = request.json
+        target = params.get("target", "")
+        tool = params.get("tool", "svmap")
+        additional_args = params.get("additional_args", "")
+
+        if not target:
+            logger.warning("sipvicious called without target parameter")
+            return jsonify({"error": "Target parameter is required"}), 400
+
+        if tool not in ["svmap", "svwar", "svcrack", "svreport"]:
+            return jsonify({"error": f"Invalid tool: {tool}. Must be one of: svmap, svwar, svcrack, svreport"}), 400
+
+        command = [tool, target]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in sipvicious endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/polenum", methods=["POST"])
+def polenum():
+    """Execute polenum password policy enumeration tool."""
+    try:
+        params = request.json
+        target = params.get("target", "")
+        username = params.get("username", "")
+        password = params.get("password", "")
+        additional_args = params.get("additional_args", "")
+
+        if not target:
+            logger.warning("polenum called without target parameter")
+            return jsonify({"error": "Target parameter is required"}), 400
+
+        command = ["polenum", "--domain", target]
+
+        if username:
+            command += ["--username", username]
+
+        if password:
+            command += ["--password", password]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in polenum endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/lynis", methods=["POST"])
+def lynis():
+    """Execute lynis security auditing tool."""
+    try:
+        params = request.json
+        mode = params.get("mode", "audit system")
+        additional_args = params.get("additional_args", "")
+
+        command = ["lynis"] + shlex.split(mode)
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in lynis endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/photon", methods=["POST"])
+def photon():
+    """Execute Photon OSINT web crawler."""
+    try:
+        params = request.json
+        url = params.get("url", "")
+        additional_args = params.get("additional_args", "")
+
+        if not url:
+            logger.warning("Photon called without URL parameter")
+            return jsonify({"error": "URL parameter is required"}), 400
+
+        command = ["photon", "-u", url]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in photon endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/dnstracer", methods=["POST"])
+def dnstracer():
+    """Execute dnstracer DNS chain tracer."""
+    try:
+        params = request.json
+        domain = params.get("domain", "")
+        additional_args = params.get("additional_args", "")
+
+        if not domain:
+            logger.warning("dnstracer called without domain parameter")
+            return jsonify({"error": "Domain parameter is required"}), 400
+
+        command = ["dnstracer", domain]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in dnstracer endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/tools/dnswalk", methods=["POST"])
+def dnswalk():
+    """Execute dnswalk DNS zone consistency checker."""
+    try:
+        params = request.json
+        domain = params.get("domain", "")
+        additional_args = params.get("additional_args", "")
+
+        if not domain:
+            logger.warning("dnswalk called without domain parameter")
+            return jsonify({"error": "Domain parameter is required"}), 400
+
+        if not domain.endswith("."):
+            domain += "."
+
+        command = ["dnswalk", domain]
+
+        if additional_args:
+            command += shlex.split(additional_args)
+
+        result = execute_command(command)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in dnswalk endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 # Health check endpoint
 @app.route("/health", methods=["GET"])
 def health_check():

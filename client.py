@@ -376,6 +376,332 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         }
         return kali_client.safe_post("api/tools/enum4linux", data)
 
+    @mcp.tool(name="medusa_attack")
+    def medusa_attack(
+        target: str,
+        service: str,
+        username: str = "",
+        username_file: str = "",
+        password: str = "",
+        password_file: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute Medusa parallel password cracker.
+
+        Args:
+            target: Target IP or hostname
+            service: Service to attack (ssh, ftp, http, smb, rdp, etc.)
+            username: Single username to try
+            username_file: Path to username list file
+            password: Single password to try
+            password_file: Path to password list file
+            additional_args: Additional Medusa arguments
+
+        Returns:
+            Attack results
+        """
+        data = {
+            "target": target,
+            "service": service,
+            "username": username,
+            "username_file": username_file,
+            "password": password,
+            "password_file": password_file,
+            "additional_args": additional_args
+        }
+        return kali_client.safe_post("api/tools/medusa", data)
+
+    @mcp.tool(name="wapiti_scan")
+    def wapiti_scan(url: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute Wapiti web vulnerability scanner.
+
+        Args:
+            url: The target URL to scan
+            additional_args: Additional Wapiti arguments (e.g. -m sql,xss)
+
+        Returns:
+            Scan results
+        """
+        data = {"url": url, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/wapiti", data)
+
+    @mcp.tool(name="joomscan_analyze")
+    def joomscan_analyze(url: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute JoomScan Joomla vulnerability scanner.
+
+        Args:
+            url: The target Joomla URL
+            additional_args: Additional JoomScan arguments
+
+        Returns:
+            Scan results
+        """
+        data = {"url": url, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/joomscan", data)
+
+    @mcp.tool(name="sqlninja_run")
+    def sqlninja_run(
+        mode: str = "t",
+        config_file: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute sqlninja SQL Server injection tool.
+
+        Args:
+            mode: Attack mode — t (test), f (fingerprint), b (bruteforce sa),
+                  e (escalate), x (upload exe), k (backscan), s (shell),
+                  d (DNS exfil), i (ICMP tunnel)
+            config_file: Path to sqlninja configuration file
+            additional_args: Additional sqlninja arguments
+
+        Returns:
+            Execution results
+        """
+        data = {"mode": mode, "config_file": config_file, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/sqlninja", data)
+
+    @mcp.tool(name="smtp_user_enum")
+    def smtp_user_enum(
+        target: str,
+        username: str = "",
+        userlist: str = "",
+        method: str = "VRFY",
+        port: int = 25,
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute smtp-user-enum SMTP user enumeration tool.
+
+        Args:
+            target: Target SMTP server IP or hostname
+            username: Single username to test
+            userlist: Path to username list file
+            method: Enumeration method — VRFY, EXPN, or RCPT
+            port: SMTP port (default 25)
+            additional_args: Additional arguments
+
+        Returns:
+            Enumeration results
+        """
+        data = {
+            "target": target,
+            "username": username,
+            "userlist": userlist,
+            "method": method,
+            "port": port,
+            "additional_args": additional_args
+        }
+        return kali_client.safe_post("api/tools/smtp-user-enum", data)
+
+    @mcp.tool(name="xsser_scan")
+    def xsser_scan(url: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute XSSer XSS vulnerability scanner.
+
+        Args:
+            url: The target URL (use FUZZ marker where applicable)
+            additional_args: Additional XSSer arguments (e.g. --auto, --Fp <payload>)
+
+        Returns:
+            Scan results
+        """
+        data = {"url": url, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/xsser", data)
+
+    @mcp.tool(name="unicornscan_scan")
+    def unicornscan_scan(
+        target: str,
+        ports: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute Unicornscan asynchronous port scanner.
+
+        Args:
+            target: Target IP address or CIDR range
+            ports: Port range (e.g. 1-1024, 80,443)
+            additional_args: Additional Unicornscan arguments (e.g. -mU for UDP)
+
+        Returns:
+            Scan results
+        """
+        data = {"target": target, "ports": ports, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/unicornscan", data)
+
+    @mcp.tool(name="dnsmap_scan")
+    def dnsmap_scan(
+        domain: str,
+        wordlist: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute dnsmap DNS subdomain brute-force tool.
+
+        Args:
+            domain: Target domain to enumerate
+            wordlist: Path to custom wordlist file
+            additional_args: Additional dnsmap arguments
+
+        Returns:
+            Enumeration results
+        """
+        data = {"domain": domain, "wordlist": wordlist, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/dnsmap", data)
+
+    @mcp.tool(name="cloud_enum_scan")
+    def cloud_enum_scan(keywords: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute cloud_enum to find public cloud storage and services.
+
+        Args:
+            keywords: Space or comma-separated keywords to search (company name, project, etc.)
+            additional_args: Additional arguments (e.g. -l mutations.txt, --disable-aws)
+
+        Returns:
+            Enumeration results across AWS, GCP, and Azure
+        """
+        data = {"keywords": keywords, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/cloud-enum", data)
+
+    @mcp.tool(name="padbuster_attack")
+    def padbuster_attack(
+        url: str,
+        sample: str,
+        block_size: int = 8,
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute PadBuster padding oracle attack tool.
+
+        Args:
+            url: Target URL containing the encrypted sample
+            sample: The encrypted sample value to attack
+            block_size: Cipher block size in bytes (8 for DES/3DES, 16 for AES)
+            additional_args: Additional PadBuster arguments (e.g. -encoding 1, -cookies)
+
+        Returns:
+            Attack results
+        """
+        data = {
+            "url": url,
+            "sample": sample,
+            "block_size": block_size,
+            "additional_args": additional_args
+        }
+        return kali_client.safe_post("api/tools/padbuster", data)
+
+    @mcp.tool(name="sipvicious_scan")
+    def sipvicious_scan(
+        target: str,
+        tool: str = "svmap",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute SIPVicious SIP scanning and enumeration tools.
+
+        Args:
+            target: Target IP, hostname, or range (e.g. 192.168.1.0/24)
+            tool: SIPVicious tool to run — svmap (scan), svwar (extension enum),
+                  svcrack (password crack), svreport (reporting)
+            additional_args: Additional arguments for the selected tool
+
+        Returns:
+            Scan or enumeration results
+        """
+        data = {"target": target, "tool": tool, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/sipvicious", data)
+
+    @mcp.tool(name="polenum_enum")
+    def polenum_enum(
+        target: str,
+        username: str = "",
+        password: str = "",
+        additional_args: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Execute polenum to extract password policy from a Windows/Samba host.
+
+        Args:
+            target: Target domain controller IP or hostname
+            username: Username for authentication
+            password: Password for authentication
+            additional_args: Additional polenum arguments
+
+        Returns:
+            Password policy details
+        """
+        data = {
+            "target": target,
+            "username": username,
+            "password": password,
+            "additional_args": additional_args
+        }
+        return kali_client.safe_post("api/tools/polenum", data)
+
+    @mcp.tool(name="lynis_audit")
+    def lynis_audit(mode: str = "audit system", additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute Lynis security auditing tool.
+
+        Args:
+            mode: Lynis command to run (e.g. 'audit system', 'audit dockerfile', 'show controls')
+            additional_args: Additional Lynis arguments (e.g. --quick, --pentest)
+
+        Returns:
+            Audit results
+        """
+        data = {"mode": mode, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/lynis", data)
+
+    @mcp.tool(name="photon_crawl")
+    def photon_crawl(url: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute Photon OSINT web crawler to extract URLs, secrets, and metadata.
+
+        Args:
+            url: Target URL to crawl
+            additional_args: Additional Photon arguments (e.g. -l 3 -t 50 --keys)
+
+        Returns:
+            Crawl results including URLs, emails, keys, and other findings
+        """
+        data = {"url": url, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/photon", data)
+
+    @mcp.tool(name="dnstracer_trace")
+    def dnstracer_trace(domain: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute dnstracer to trace DNS query chains to authoritative servers.
+
+        Args:
+            domain: Domain name to trace
+            additional_args: Additional dnstracer arguments
+
+        Returns:
+            DNS resolution chain results
+        """
+        data = {"domain": domain, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/dnstracer", data)
+
+    @mcp.tool(name="dnswalk_check")
+    def dnswalk_check(domain: str, additional_args: str = "") -> Dict[str, Any]:
+        """
+        Execute dnswalk DNS zone consistency and delegation checker.
+
+        Args:
+            domain: Domain to check (trailing dot added automatically if missing)
+            additional_args: Additional dnswalk arguments (e.g. -r for recursive)
+
+        Returns:
+            Zone consistency check results
+        """
+        data = {"domain": domain, "additional_args": additional_args}
+        return kali_client.safe_post("api/tools/dnswalk", data)
+
     @mcp.tool(name="server_health")
     def server_health() -> Dict[str, Any]:
         """

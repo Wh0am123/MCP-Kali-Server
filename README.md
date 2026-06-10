@@ -2,19 +2,36 @@
 
 **MCP Kali Server (MKS)** is a lightweight API bridge that connects [MCP clients](https://modelcontextprotocol.io/clients) (e.g: [Claude Desktop](https://code.claude.com/docs/en/desktop) or [5ire](https://github.com/nanbingxyz/5ire)) to the [API server](https://modelcontextprotocol.io/examples) which allows executing commands on a Linux terminal.
 
-This MCP is able to run terminal commands as well as interacting with web applications using:
+This MCP is able to run terminal commands as well as interacting with web applications using 26 explicitly supported tools, plus arbitrary raw command execution.
 
-- `Dirb`
-- `enum4linux`
-- `gobuster`
-- `Hydra`
-- `John the Ripper`
-- `Metasploit-Framework`
-- `Nikto`
-- `Nmap`
-- `sqlmap`
-- `WPScan`
-- As well as being able to execute raw commands.
+| Tool | MCP Tool Name | Notable Implementation Details |
+|---|---|---|
+| cloud-enum | `cloud_enum_scan` | Keywords split on comma/whitespace; each gets its own `-k` flag |
+| Dirb | `dirb_scan` | Wordlist defaults to `/usr/share/wordlists/dirb/common.txt` |
+| dnsmap | `dnsmap_scan` | Optional custom wordlist via `-w` |
+| dnstracer | `dnstracer_trace` | Domain passed as positional argument |
+| dnswalk | `dnswalk_check` | Trailing `.` appended to domain automatically if missing |
+| enum4linux | `enum4linux_scan` | `additional_args` defaults to `-a` (full enumeration) |
+| Gobuster | `gobuster_scan` | Mode validated against `dir`, `dns`, `fuzz`, `vhost` |
+| Hydra | `hydra_attack` | Concurrency limited to 4 threads (`-t 4`) |
+| John the Ripper | `john_crack` | Wordlist defaults to `/usr/share/wordlists/rockyou.txt` |
+| JoomScan | `joomscan_analyze` | Uses `--url` flag |
+| Lynis | `lynis_audit` | Mode defaults to `audit system`; supports any Lynis subcommand |
+| Medusa | `medusa_attack` | Mirrors Hydra's `-u/-U/-p/-P` pattern; concurrency limited to 4 |
+| Metasploit | `metasploit_run` | Writes temp resource script to `/tmp`; module name regex-validated |
+| Nikto | `nikto_scan` | Target passed via `-h` flag |
+| Nmap | `nmap_scan` | `scan_type` defaults to `-sCV`; `additional_args` defaults to `-T4 -Pn` |
+| padbuster | `padbuster_attack` | URL, sample, and block size are positional arguments |
+| Photon | `photon_crawl` | Target passed via `-u` flag |
+| polenum | `polenum_enum` | Uses `--domain`, `--username`, `--password` flags |
+| sipvicious | `sipvicious_scan` | Tool validated against `svmap`, `svwar`, `svcrack`, `svreport` |
+| smtp-user-enum | `smtp_user_enum` | Method validated against `VRFY`, `EXPN`, `RCPT`; port defaults to 25 |
+| sqlmap | `sqlmap_scan` | `--batch` flag always added for non-interactive use |
+| sqlninja | `sqlninja_run` | Mode validated against `t/f/b/e/x/k/s/d/i` |
+| unicornscan | `unicornscan_scan` | Target formatted as `host:ports` when ports specified |
+| wapiti | `wapiti_scan` | Target passed via `-u` flag |
+| WPScan | `wpscan_analyze` | Target passed via `--url` flag |
+| xsser | `xsser_scan` | Target passed via `-u` flag |
 
 As a result, this is able to perform **AI-assisted penetration testing** and solving **CTF challenges** in real time.
 
