@@ -17,6 +17,8 @@ import threading
 from typing import Dict, Any
 from flask import Flask, request, jsonify
 
+from parsers import enrich
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -192,9 +194,9 @@ def nmap():
             command += shlex.split(additional_args)
 
         command.append(target)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "nmap"))
     except Exception as e:
         logger.error(f"Error in nmap endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -229,9 +231,9 @@ def gobuster():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "gobuster"))
     except Exception as e:
         logger.error(f"Error in gobuster endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -258,9 +260,9 @@ def dirb():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "dirb"))
     except Exception as e:
         logger.error(f"Error in dirb endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -286,9 +288,9 @@ def nikto():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "nikto"))
     except Exception as e:
         logger.error(f"Error in nikto endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -318,9 +320,9 @@ def sqlmap():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "sqlmap"))
     except Exception as e:
         logger.error(f"Error in sqlmap endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -484,9 +486,9 @@ def wpscan():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "wpscan"))
     except Exception as e:
         logger.error(f"Error in wpscan endpoint: {str(e)}")
         logger.error(traceback.format_exc())
