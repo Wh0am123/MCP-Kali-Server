@@ -76,7 +76,7 @@ def parse_nikto(stdout: str) -> Dict[str, Any]:
     target = {"host": None, "ip": None, "port": None}
     findings: List[Dict[str, Any]] = []
 
-    target_host_re = re.compile(r"^\+?\s*Target (?:Host|IP):\s*(.+)$")
+    target_host_re = re.compile(r"^\+?\s*Target (?:Hostname|Host|IP):\s*(.+)$")
     target_port_re = re.compile(r"^\+?\s*Target Port:\s*(\d+)$")
     # OSVDB or modern reference ids appearing inside a finding line.
     ref_re = re.compile(r"\b(OSVDB-\d+|CVE-\d{4}-\d+)\b")
