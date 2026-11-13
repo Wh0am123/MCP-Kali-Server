@@ -399,6 +399,93 @@ def setup_mcp_server(kali_client: KaliToolsClient) -> FastMCP:
         """
         return kali_client.execute_command(command)
 
+    # ----- Metasploit RPC: persistent consoles & live sessions -----
+    @mcp.tool(name="msf_console_create")
+    def msf_console_create() -> Dict[str, Any]:
+        """
+        Create a persistent Metasploit console (via msfrpcd) and return its console_id.
+        Drive it with msf_console_write / msf_console_read. State persists across calls,
+        unlike the one-shot metasploit_run tool.
+        """
+        return kali_client.safe_post("api/msf/console/create", {})
+
+    @mcp.tool(name="msf_console_write")
+    def msf_console_write(console_id: str, command: str) -> Dict[str, Any]:
+        """
+        Write a command to a Metasploit console and return the output it produces.
+
+        Args:
+            console_id: The console id from msf_console_create
+            command: The msfconsole command to run (e.g. "sessions -l")
+        """
+        return kali_client.safe_post("api/msf/console/write", {"console_id": console_id, "command": command})
+
+    @mcp.tool(name="msf_console_read")
+    def msf_console_read(console_id: str) -> Dict[str, Any]:
+        """
+        Read buffered output from a Metasploit console without writing. Poll this
+        while a previous command is still busy.
+
+        Args:
+            console_id: The console id from msf_console_create
+        """
+        return kali_client.safe_post("api/msf/console/read", {"console_id": console_id})
+
+    @mcp.tool(name="msf_console_destroy")
+    def msf_console_destroy(console_id: str) -> Dict[str, Any]:
+        """
+        Destroy a Metasploit console when finished with it.
+
+        Args:
+            console_id: The console id from msf_console_create
+        """
+        return kali_client.safe_post("api/msf/console/destroy", {"console_id": console_id})
+
+    @mcp.tool(name="msf_handler")
+    def msf_handler(payload: str, lhost: str, lport: str, extra: str = "") -> Dict[str, Any]:
+        """
+        Start exploit/multi/handler as a BACKGROUND job to catch a reverse shell.
+        Does not block. After the target connects, call msf_sessions to find the
+        session id, then msf_session_write / msf_session_read to drive it.
+
+        Args:
+            payload: Payload to handle (e.g. "linux/x64/shell_reverse_tcp")
+            lhost: Listener address (the Kali interface the target connects back to)
+            lport: Listener port
+            extra: Optional extra setup lines (one msfconsole command per line)
+        """
+        return kali_client.safe_post("api/msf/handler", {"payload": payload, "lhost": lhost, "lport": lport, "extra": extra})
+
+    @mcp.tool(name="msf_sessions")
+    def msf_sessions() -> Dict[str, Any]:
+        """
+        List active Metasploit sessions (shells / meterpreters) with their ids.
+        """
+        return kali_client.safe_get("api/msf/sessions")
+
+    @mcp.tool(name="msf_session_write")
+    def msf_session_write(session_id: str, command: str, type: str = "shell") -> Dict[str, Any]:
+        """
+        Run a command inside a live Metasploit session and return its output.
+
+        Args:
+            session_id: The session id from msf_sessions
+            command: The command to run in the session (e.g. "id", "uname -a")
+            type: "shell" (default) or "meterpreter"
+        """
+        return kali_client.safe_post("api/msf/session/write", {"session_id": session_id, "command": command, "type": type})
+
+    @mcp.tool(name="msf_session_read")
+    def msf_session_read(session_id: str, type: str = "shell") -> Dict[str, Any]:
+        """
+        Read any pending output from a live Metasploit session.
+
+        Args:
+            session_id: The session id from msf_sessions
+            type: "shell" (default) or "meterpreter"
+        """
+        return kali_client.safe_post("api/msf/session/read", {"session_id": session_id, "type": type})
+
     return mcp
 
 def parse_args():
