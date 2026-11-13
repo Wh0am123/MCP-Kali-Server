@@ -14,8 +14,11 @@ import subprocess
 import sys
 import traceback
 import threading
+import time
 from typing import Dict, Any
 from flask import Flask, request, jsonify
+
+from parsers import enrich
 
 # Configure logging
 logging.basicConfig(
@@ -192,9 +195,9 @@ def nmap():
             command += shlex.split(additional_args)
 
         command.append(target)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "nmap"))
     except Exception as e:
         logger.error(f"Error in nmap endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -229,9 +232,9 @@ def gobuster():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "gobuster"))
     except Exception as e:
         logger.error(f"Error in gobuster endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -258,9 +261,9 @@ def dirb():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "dirb"))
     except Exception as e:
         logger.error(f"Error in dirb endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -286,9 +289,9 @@ def nikto():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "nikto"))
     except Exception as e:
         logger.error(f"Error in nikto endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -318,9 +321,9 @@ def sqlmap():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "sqlmap"))
     except Exception as e:
         logger.error(f"Error in sqlmap endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -484,9 +487,9 @@ def wpscan():
 
         if additional_args:
             command += shlex.split(additional_args)
-        
+
         result = execute_command(command)
-        return jsonify(result)
+        return jsonify(enrich(result, "wpscan"))
     except Exception as e:
         logger.error(f"Error in wpscan endpoint: {str(e)}")
         logger.error(traceback.format_exc())
@@ -520,6 +523,309 @@ def enum4linux():
         }), 500
 
 
+# ---------------------------------------------------------------------------
+# Metasploit RPC (msfrpcd) integration — persistent consoles & live sessions
+# ---------------------------------------------------------------------------
+# These endpoints talk to a running msfrpcd daemon via pymetasploit3, which
+# keeps console and session state server-side (keyed by id). Unlike the
+# one-shot /api/tools/metasploit endpoint, they let an agent start a handler
+# as a BACKGROUND job and read/write a caught shell across separate requests.
+#
+# Start the daemon on the Kali box first, for example:
+#     msfrpcd -P <password> -S -a 127.0.0.1 -p 55553
+# and export MSFRPCD_PASSWORD to match.
+
+MSFRPCD_HOST = os.environ.get("MSFRPCD_HOST", "127.0.0.1")
+MSFRPCD_PORT = int(os.environ.get("MSFRPCD_PORT", 55553))
+MSFRPCD_PASSWORD = os.environ.get("MSFRPCD_PASSWORD", "")
+MSFRPCD_SSL = os.environ.get("MSFRPCD_SSL", "0").lower() in ("1", "true", "yes", "y")
+
+_msf_client = None
+_msf_lock = threading.Lock()
+
+
+def _to_str(obj):
+    """Recursively decode bytes (keys and values) to str so responses stay
+    JSON-safe regardless of how pymetasploit3 decodes msgpack."""
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8", "replace")
+    if isinstance(obj, dict):
+        return {_to_str(k): _to_str(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_str(x) for x in obj]
+    return obj
+
+
+def get_msf_client():
+    """Lazily create and cache an MsfRpcClient connected to msfrpcd.
+
+    Returns:
+        (client, None) on success, or (None, error_dict) on failure.
+    """
+    global _msf_client
+    if not MSFRPCD_PASSWORD:
+        return None, {
+            "error": "msfrpcd is not configured. Set MSFRPCD_PASSWORD and start the daemon: "
+                     "msfrpcd -P <password> -S -a 127.0.0.1 -p 55553",
+            "success": False,
+        }
+    with _msf_lock:
+        if _msf_client is not None:
+            return _msf_client, None
+        try:
+            from pymetasploit3.msfrpc import MsfRpcClient
+        except ImportError:
+            return None, {
+                "error": "pymetasploit3 is not installed. Install it on the Kali server: "
+                         "pip install pymetasploit3",
+                "success": False,
+            }
+        try:
+            _msf_client = MsfRpcClient(
+                MSFRPCD_PASSWORD,
+                server=MSFRPCD_HOST,
+                port=MSFRPCD_PORT,
+                ssl=MSFRPCD_SSL,
+            )
+            logger.info(f"Connected to msfrpcd at {MSFRPCD_HOST}:{MSFRPCD_PORT}")
+            return _msf_client, None
+        except Exception as e:
+            logger.error(f"Failed to connect to msfrpcd: {str(e)}")
+            return None, {
+                "error": f"Could not connect to msfrpcd at {MSFRPCD_HOST}:{MSFRPCD_PORT}: {str(e)}. "
+                         "Start it with: msfrpcd -P <password> -S -a 127.0.0.1 -p 55553",
+                "success": False,
+            }
+
+
+def _msf_console_read_until_idle(client, cid, timeout: int = 20):
+    """Read an msf console until it is no longer busy (or until timeout).
+
+    Returns (output_str, last_prompt_str).
+    """
+    output = ""
+    prompt = ""
+    deadline = time.time() + timeout
+    time.sleep(0.5)  # let the console start producing output
+    while time.time() < deadline:
+        res = _to_str(client.call("console.read", [str(cid)]))
+        if res.get("data"):
+            output += res["data"]
+        prompt = res.get("prompt", prompt)
+        if not res.get("busy", False):
+            break
+        time.sleep(0.4)
+    return output, prompt
+
+
+@app.route("/api/msf/console/create", methods=["POST"])
+def msf_console_create():
+    """Create a persistent Metasploit console and return its id."""
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        res = _to_str(client.call("console.create"))
+        cid = res.get("id")
+        banner, prompt = _msf_console_read_until_idle(client, cid, timeout=15)
+        return jsonify({"success": True, "console_id": cid, "prompt": prompt, "banner": banner})
+    except Exception as e:
+        logger.error(f"Error in msf console create: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/console/write", methods=["POST"])
+def msf_console_write():
+    """Write a command to a console and return the output it produces."""
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        cid = params.get("console_id", "")
+        command = params.get("command", "")
+        if cid == "" or not command:
+            return jsonify({"error": "console_id and command are required"}), 400
+        data = command if command.endswith("\n") else command + "\n"
+        client.call("console.write", [str(cid), data])
+        output, prompt = _msf_console_read_until_idle(client, str(cid), timeout=30)
+        return jsonify({"success": True, "console_id": cid, "data": output, "prompt": prompt})
+    except Exception as e:
+        logger.error(f"Error in msf console write: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/console/read", methods=["POST"])
+def msf_console_read():
+    """Read any buffered output from a console without writing to it."""
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        cid = params.get("console_id", "")
+        if cid == "":
+            return jsonify({"error": "console_id is required"}), 400
+        res = _to_str(client.call("console.read", [str(cid)]))
+        return jsonify({
+            "success": True,
+            "console_id": cid,
+            "data": res.get("data", ""),
+            "prompt": res.get("prompt", ""),
+            "busy": res.get("busy", False),
+        })
+    except Exception as e:
+        logger.error(f"Error in msf console read: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/console/destroy", methods=["POST"])
+def msf_console_destroy():
+    """Destroy a console when you are finished with it."""
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        cid = params.get("console_id", "")
+        if cid == "":
+            return jsonify({"error": "console_id is required"}), 400
+        res = _to_str(client.call("console.destroy", [str(cid)]))
+        return jsonify({"success": True, "console_id": cid, "result": res.get("result", "")})
+    except Exception as e:
+        logger.error(f"Error in msf console destroy: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/handler", methods=["POST"])
+def msf_handler():
+    """Start exploit/multi/handler as a BACKGROUND job to catch a reverse shell.
+
+    Body: {payload, lhost, lport, extra?}. The handler is launched with
+    `exploit -j -z` so it never blocks; the caught session then shows up in
+    /api/msf/sessions.
+    """
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        payload = params.get("payload", "")
+        lhost = str(params.get("lhost", ""))
+        lport = str(params.get("lport", ""))
+        extra = params.get("extra", "")
+
+        if not payload or not lhost or not lport:
+            return jsonify({"error": "payload, lhost and lport are required"}), 400
+        if not re.match(r'^[a-zA-Z0-9/_-]+$', payload):
+            return jsonify({"error": "Invalid payload name"}), 400
+        if not re.match(r'^[A-Za-z0-9._:-]+$', lhost):
+            return jsonify({"error": "Invalid lhost"}), 400
+        if not re.match(r'^\d{1,5}$', lport):
+            return jsonify({"error": "Invalid lport"}), 400
+
+        res = _to_str(client.call("console.create"))
+        cid = res.get("id")
+        _msf_console_read_until_idle(client, cid, timeout=15)  # drain the banner
+
+        lines = [
+            "use exploit/multi/handler",
+            f"set PAYLOAD {payload}",
+            f"set LHOST {lhost}",
+            f"set LPORT {lport}",
+        ]
+        if extra:
+            for ln in str(extra).splitlines():
+                ln = ln.strip()
+                if ln:
+                    lines.append(ln)
+        lines.append("exploit -j -z")  # background job; do not block or interact
+        client.call("console.write", [cid, "\n".join(lines) + "\n"])
+        output, prompt = _msf_console_read_until_idle(client, cid, timeout=30)
+        return jsonify({"success": True, "console_id": cid, "output": output, "prompt": prompt})
+    except Exception as e:
+        logger.error(f"Error in msf handler: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/sessions", methods=["GET"])
+def msf_sessions():
+    """List active Metasploit sessions (shells / meterpreters)."""
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        res = _to_str(client.call("session.list"))
+        return jsonify({"success": True, "sessions": res})
+    except Exception as e:
+        logger.error(f"Error in msf sessions: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/session/write", methods=["POST"])
+def msf_session_write():
+    """Write a command to a live session and return the resulting output.
+
+    Body: {session_id, command, type?}. type is "shell" (default) or "meterpreter".
+    """
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        sid = str(params.get("session_id", ""))
+        command = params.get("command", "")
+        stype = params.get("type", "shell")
+        if sid == "" or not command:
+            return jsonify({"error": "session_id and command are required"}), 400
+        data = command if command.endswith("\n") else command + "\n"
+        if stype == "meterpreter":
+            client.call("session.meterpreter_write", [sid, data])
+            time.sleep(1.0)
+            res = _to_str(client.call("session.meterpreter_read", [sid]))
+        else:
+            client.call("session.shell_write", [sid, data])
+            time.sleep(1.0)
+            res = _to_str(client.call("session.shell_read", [sid]))
+        return jsonify({"success": True, "session_id": sid, "data": res.get("data", "")})
+    except Exception as e:
+        logger.error(f"Error in msf session write: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/api/msf/session/read", methods=["POST"])
+def msf_session_read():
+    """Read any pending output from a live session.
+
+    Body: {session_id, type?}. type is "shell" (default) or "meterpreter".
+    """
+    client, err = get_msf_client()
+    if err:
+        return jsonify(err), 503
+    try:
+        params = request.get_json(silent=True) or {}
+        sid = str(params.get("session_id", ""))
+        stype = params.get("type", "shell")
+        if sid == "":
+            return jsonify({"error": "session_id is required"}), 400
+        if stype == "meterpreter":
+            res = _to_str(client.call("session.meterpreter_read", [sid]))
+        else:
+            res = _to_str(client.call("session.shell_read", [sid]))
+        return jsonify({"success": True, "session_id": sid, "data": res.get("data", "")})
+    except Exception as e:
+        logger.error(f"Error in msf session read: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 # Health check endpoint
 @app.route("/health", methods=["GET"])
 def health_check():
@@ -537,11 +843,23 @@ def health_check():
     
     all_essential_tools_available = all(tools_status.values())
     
+    # Report Metasploit RPC reachability (non-fatal)
+    msf_status = {"configured": bool(MSFRPCD_PASSWORD), "reachable": False}
+    if MSFRPCD_PASSWORD:
+        msf_client, msf_err = get_msf_client()
+        if msf_client and not msf_err:
+            try:
+                msf_client.call("core.version")
+                msf_status["reachable"] = True
+            except Exception:
+                msf_status["reachable"] = False
+
     return jsonify({
         "status": "healthy",
         "message": "Kali Linux Tools API Server is running",
         "tools_status": tools_status,
-        "all_essential_tools_available": all_essential_tools_available
+        "all_essential_tools_available": all_essential_tools_available,
+        "metasploit_rpc": msf_status
     })
 
 @app.route("/mcp/capabilities", methods=["GET"])
